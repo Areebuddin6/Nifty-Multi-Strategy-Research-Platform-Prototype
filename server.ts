@@ -1,9 +1,11 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
-import { NIFTY_500_STOCKS, NIFTY_INDICES } from './src/data/niftyUniverses';
+import { NIFTY_500_STOCKS, NIFTY_INDICES, getUniverseStocks } from './src/data/niftyUniverses';
+import { generateDateChunks, downloadInstrumentFullHistory } from './src/cli/downloadKiteData';
 
 // Load environment variables from .env
 dotenv.config();
@@ -163,19 +165,52 @@ async function startServer() {
 
   /**
    * Historical Candle Ingestion Endpoint
-   * Queries Kite Connect API:
-   * GET https://api.kite.trade/instruments/historical/{token}/{interval}?from={from}&to={to}
+   * Supports multi-decade queries (10, 20, 30 years) with auto-chunking to bypass Kite's 365-day cap.
+   * Also checks local file cache (market_data_cache/) for instant offline-first responses.
    */
   app.post('/api/kite/historical', async (req, res) => {
-    const { instrumentToken, symbol, from, to, interval = 'day' } = req.body;
+    const { instrumentToken, symbol, from, to, interval = 'day', forceRefresh = false } = req.body;
 
     let token = instrumentToken;
+    let symName = symbol;
     if (!token && symbol && NSE_INSTRUMENT_MAP[symbol]) {
       token = NSE_INSTRUMENT_MAP[symbol].token;
     }
+    if (!symName && token) {
+      const found = Object.entries(NSE_INSTRUMENT_MAP).find(([k, v]) => v.token === token);
+      if (found) symName = found[0];
+    }
 
-    if (!token) {
+    if (!token && !symName) {
       return res.status(400).json({ error: 'Valid instrumentToken or recognized symbol is required' });
+    }
+
+    const safeSym = (symName || `Token_${token}`).toUpperCase().trim();
+    const cacheDir = path.join(process.cwd(), 'market_data_cache');
+    const cacheFile = path.join(cacheDir, `${safeSym}_${interval}.json`);
+
+    // 1. Check local cache if forceRefresh is not requested
+    if (!forceRefresh && fs.existsSync(cacheFile)) {
+      try {
+        const cachedRaw = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+        if (Array.isArray(cachedRaw) && cachedRaw.length > 0) {
+          let filtered = cachedRaw;
+          if (from) filtered = filtered.filter(c => c.date >= from);
+          if (to) filtered = filtered.filter(c => c.date <= to);
+
+          return res.json({
+            status: 'success',
+            source: 'local_cache',
+            symbol: safeSym,
+            instrumentToken: token,
+            interval,
+            count: filtered.length,
+            candles: filtered,
+          });
+        }
+      } catch (err) {
+        console.warn(`Could not read cached file for ${safeSym}:`, err);
+      }
     }
 
     const apiKey = process.env.KITE_API_KEY || '';
@@ -194,47 +229,80 @@ async function startServer() {
     }
 
     try {
-      const url = `https://api.kite.trade/instruments/historical/${token}/${interval}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-      const response = await fetch(url, {
-        headers: {
-          'X-Kite-Version': '3',
-          'Authorization': `token ${apiKey}:${activeToken}`,
-        },
-      });
+      // Check if date span is > 365 days
+      const startDate = new Date(from || '2000-01-01');
+      const endDate = new Date(to || new Date().toISOString().split('T')[0]);
+      const diffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        return res.status(response.status).json({
-          status: 'error',
-          error: `Kite API returned HTTP ${response.status}`,
-          details: errorText,
+      let candles: any[] = [];
+
+      if (diffDays > 365) {
+        // Multi-decade request: Chunk into 365-day slices
+        const chunks = generateDateChunks(
+          from || startDate.toISOString().split('T')[0],
+          to || endDate.toISOString().split('T')[0],
+          365
+        );
+
+        candles = await downloadInstrumentFullHistory(
+          apiKey,
+          activeToken,
+          token,
+          safeSym,
+          interval,
+          chunks
+        );
+      } else {
+        // Single slice <= 365 days
+        const url = `https://api.kite.trade/instruments/historical/${token}/${interval}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+        const response = await fetch(url, {
+          headers: {
+            'X-Kite-Version': '3',
+            'Authorization': `token ${apiKey}:${activeToken}`,
+          },
         });
-      }
 
-      const json: any = await response.json();
-      if (json.status !== 'success' || !json.data?.candles) {
-        return res.status(500).json({
-          status: 'error',
-          error: json.message || 'No candle data returned from Kite',
-        });
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          return res.status(response.status).json({
+            status: 'error',
+            error: `Kite API returned HTTP ${response.status}`,
+            details: errorText,
+          });
+        }
 
-      const candles = json.data.candles.map((c: any) => {
-        const rawDate = c[0];
-        const dateStr = typeof rawDate === 'string' ? rawDate.split('T')[0] : String(rawDate);
-        return {
-          date: dateStr,
+        const json: any = await response.json();
+        if (json.status !== 'success' || !json.data?.candles) {
+          return res.status(500).json({
+            status: 'error',
+            error: json.message || 'No candle data returned from Kite',
+          });
+        }
+
+        candles = json.data.candles.map((c: any) => ({
+          date: typeof c[0] === 'string' ? c[0].split('T')[0] : String(c[0]),
           open: Number(c[1]),
           high: Number(c[2]),
           low: Number(c[3]),
           close: Number(c[4]),
           volume: Number(c[5] || 0),
-        };
-      });
+        }));
+      }
+
+      // Save to disk cache for instantaneous future access
+      try {
+        if (!fs.existsSync(cacheDir)) {
+          fs.mkdirSync(cacheDir, { recursive: true });
+        }
+        fs.writeFileSync(cacheFile, JSON.stringify(candles, null, 2), 'utf8');
+      } catch (saveErr) {
+        console.warn('Could not cache candles to disk:', saveErr);
+      }
 
       res.json({
         status: 'success',
-        symbol: symbol || `Token_${token}`,
+        source: 'kite_api_live',
+        symbol: safeSym,
         instrumentToken: token,
         interval,
         count: candles.length,
@@ -242,6 +310,69 @@ async function startServer() {
       });
     } catch (err: any) {
       res.status(500).json({ status: 'error', error: err.message });
+    }
+  });
+
+  /**
+   * Local Market Data Cache Status Endpoint
+   * Returns details of locally cached historical instruments (10, 20, 30 years)
+   */
+  app.get('/api/kite/cache-status', (req, res) => {
+    const cacheDir = path.join(process.cwd(), 'market_data_cache');
+    if (!fs.existsSync(cacheDir)) {
+      return res.json({
+        exists: false,
+        totalFiles: 0,
+        symbols: [],
+        totalCandles: 0,
+        minDate: null,
+        maxDate: null,
+        yearsCovered: 0,
+      });
+    }
+
+    try {
+      const files = fs.readdirSync(cacheDir).filter(f => f.endsWith('.json') && f !== 'manifest.json');
+      const symbols: string[] = [];
+      let totalCandles = 0;
+      let minDate: string | null = null;
+      let maxDate: string | null = null;
+
+      for (const file of files) {
+        const sym = file.replace(/_day\.json|_minute\.json|\.json/, '');
+        symbols.push(sym);
+        try {
+          const content = JSON.parse(fs.readFileSync(path.join(cacheDir, file), 'utf8'));
+          if (Array.isArray(content) && content.length > 0) {
+            totalCandles += content.length;
+            const firstDate = content[0]?.date;
+            const lastDate = content[content.length - 1]?.date;
+            if (firstDate && (!minDate || firstDate < minDate)) minDate = firstDate;
+            if (lastDate && (!maxDate || lastDate > maxDate)) maxDate = lastDate;
+          }
+        } catch {
+          // ignore corrupted single file
+        }
+      }
+
+      let yearsCovered = 0;
+      if (minDate && maxDate) {
+        const start = new Date(minDate).getTime();
+        const end = new Date(maxDate).getTime();
+        yearsCovered = Number(((end - start) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1));
+      }
+
+      res.json({
+        exists: true,
+        totalFiles: files.length,
+        symbols,
+        totalCandles,
+        minDate,
+        maxDate,
+        yearsCovered,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
     }
   });
 

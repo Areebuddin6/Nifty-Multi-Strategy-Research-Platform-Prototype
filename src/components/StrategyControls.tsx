@@ -172,6 +172,158 @@ export const StrategyControls: React.FC<StrategyControlsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Multi-Decade Time Horizon & Macro Regimes Selector */}
+      <div className="mt-4 pt-4 border-t border-slate-800/80">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-semibold text-slate-200">Historical Backtest Horizon:</span>
+            <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+              {config.startDate} → {config.endDate} (
+              {((new Date(config.endDate).getTime() - new Date(config.startDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1)} Years)
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500">
+            Simulates point-in-time NSE liquidity, circuit limits, and statutory taxes
+          </span>
+        </div>
+
+        {/* Quick Horizon Presets & Custom Backtest Horizon */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {[
+            { label: '30 Years (1996–2026)', start: '1996-01-01', end: '2026-08-31', badge: 'Full NSE History' },
+            { label: '20 Years (2006–2026)', start: '2006-01-01', end: '2026-08-31', badge: 'Includes GFC' },
+            { label: '10 Years (2016–2026)', start: '2016-01-01', end: '2026-08-31', badge: 'DeMon & COVID' },
+            { label: '5 Years (2020–2026)', start: '2020-01-01', end: '2026-08-31', badge: 'COVID Supercycle' },
+            { label: '3 Years (2023–2026)', start: '2023-01-01', end: '2026-08-31', badge: 'High-Rate Regime' },
+          ].map((preset) => {
+            const isSelected = config.startDate === preset.start && config.endDate === preset.end;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => onUpdateConfig({ startDate: preset.start, endDate: preset.end })}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center space-x-1.5 cursor-pointer ${
+                  isSelected
+                    ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 font-semibold shadow-xs'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <span>{preset.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded font-semibold transition-colors ${
+                    isSelected
+                      ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                  }`}
+                >
+                  {preset.badge}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Dedicated Custom Horizon Selector */}
+          {(() => {
+            const isPreset = [
+              { start: '1996-01-01', end: '2026-08-31' },
+              { start: '2006-01-01', end: '2026-08-31' },
+              { start: '2016-01-01', end: '2026-08-31' },
+              { start: '2020-01-01', end: '2026-08-31' },
+              { start: '2023-01-01', end: '2026-08-31' },
+            ].some((p) => config.startDate === p.start && config.endDate === p.end);
+            const isCustom = !isPreset;
+
+            return (
+              <button
+                type="button"
+                id="custom-horizon-button"
+                onClick={() => {
+                  document.getElementById('backtest-start-date')?.focus();
+                }}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center space-x-1.5 cursor-pointer ${
+                  isCustom
+                    ? 'bg-emerald-500/15 border-emerald-500 text-emerald-400 font-semibold shadow-xs'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                }`}
+              >
+                <span>Custom Backtest Horizon</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded font-semibold transition-colors ${
+                    isCustom
+                      ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                  }`}
+                >
+                  {isCustom ? 'Active' : 'Custom Dates'}
+                </span>
+              </button>
+            );
+          })()}
+        </div>
+
+        {/* Date Inputs for Custom Tuning */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs shadow-sm">
+          <div>
+            <label className="text-slate-400 block mb-1 font-semibold text-[11px] uppercase tracking-wider">Start Date</label>
+            <input
+              id="backtest-start-date"
+              type="date"
+              value={config.startDate}
+              min="1996-01-01"
+              max={config.endDate}
+              onChange={(e) => onUpdateConfig({ startDate: e.target.value })}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-emerald-500 font-mono text-xs shadow-xs transition-colors"
+            />
+          </div>
+          <div>
+            <label className="text-slate-400 block mb-1 font-semibold text-[11px] uppercase tracking-wider">End Date</label>
+            <input
+              id="backtest-end-date"
+              type="date"
+              value={config.endDate}
+              min={config.startDate}
+              max="2026-12-31"
+              onChange={(e) => onUpdateConfig({ endDate: e.target.value })}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-emerald-500 font-mono text-xs shadow-xs transition-colors"
+            />
+          </div>
+
+          <div className="sm:col-span-2 flex flex-col justify-center">
+            <span className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-1.5 block">
+              Active Macro Stress Regimes In This Window:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { name: '2000 Dot-Com (-50%)', from: 2000, to: 2002 },
+                { name: '2003-07 Capex Bull', from: 2003, to: 2007 },
+                { name: '2008 Lehman GFC (-60%)', from: 2008, to: 2009 },
+                { name: '2013 Taper Tantrum', from: 2013, to: 2013 },
+                { name: '2016 DeMon', from: 2016, to: 2016 },
+                { name: '2020 COVID (-38%)', from: 2020, to: 2020 },
+                { name: '2021-26 SIP Boom', from: 2021, to: 2026 },
+              ].map((regime) => {
+                const startYr = parseInt(config.startDate.slice(0, 4)) || 2020;
+                const endYr = parseInt(config.endDate.slice(0, 4)) || 2026;
+                const isActive = startYr <= regime.to && endYr >= regime.from;
+                return (
+                  <span
+                    key={regime.name}
+                    className={`text-[10px] px-2.5 py-0.5 rounded-md border font-semibold transition-colors ${
+                      isActive
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-2xs'
+                        : 'bg-slate-800/80 border-slate-700/60 text-slate-400 font-medium'
+                    }`}
+                  >
+                    {regime.name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -107,7 +107,9 @@ export default function App() {
   const handleSelectAndApplyFromOptimizer = (
     stratId: StrategyType, 
     variation: StrategyVariation, 
-    lookbackDays: number
+    lookbackDays: number,
+    optStartDate?: string,
+    optEndDate?: string
   ) => {
     setConfig(prev => ({
       ...prev,
@@ -115,6 +117,8 @@ export default function App() {
       name: strategyNames[stratId] || stratId,
       variation,
       lookbackDays,
+      ...(optStartDate ? { startDate: optStartDate } : {}),
+      ...(optEndDate ? { endDate: optEndDate } : {}),
     }));
     setActiveTab('backtest');
   };
@@ -145,7 +149,7 @@ export default function App() {
     setActiveTab('backtest');
   };
 
-  // Synchronize theme with html and body
+  // Synchronize theme with html and body smoothly
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'light') {
@@ -154,21 +158,17 @@ export default function App() {
       root.setAttribute('data-theme', 'light');
       document.body.classList.add('light-theme');
       document.body.classList.remove('dark');
-      document.body.style.backgroundColor = '#f8fafc';
-      document.body.style.color = '#0f172a';
     } else {
       root.classList.remove('light-theme');
       root.classList.add('dark');
       root.setAttribute('data-theme', 'dark');
       document.body.classList.remove('light-theme');
       document.body.classList.add('dark');
-      document.body.style.backgroundColor = '#020617';
-      document.body.style.color = '#f8fafc';
     }
   }, [theme]);
 
   return (
-    <div className={`min-h-screen ${theme === 'light' ? 'light-theme bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'} transition-colors duration-200`}>
+    <div className={`min-h-screen ${theme === 'light' ? 'light-theme bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'} transition-colors duration-300`}>
       {/* Platform Navigation Bar */}
       <Navbar
         activeTab={activeTab}
@@ -280,6 +280,8 @@ export default function App() {
             onSelectAndApplyStrategy={handleSelectAndApplyFromOptimizer}
             onOpenMetricHelp={handleOpenMetricHelp}
             isSimpleMode={isSimpleMode}
+            initialStartDate={config.startDate}
+            initialEndDate={config.endDate}
           />
         )}
 

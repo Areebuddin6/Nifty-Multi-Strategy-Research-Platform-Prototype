@@ -552,14 +552,29 @@ export function getUniverseStocks(universe: string): string[] {
  */
 export function getInstrumentToken(symbolOrIndex: string): number | undefined {
   const clean = symbolOrIndex.toUpperCase().trim();
+  const normalizedKey = clean.replace(/[\s-]+/g, '_');
   
-  // Check indices
+  // Direct check for popular index names
+  if (clean === 'NIFTY 50' || clean === 'NIFTY50' || clean === 'NIFTY_50') {
+    return 256265;
+  }
+  if (clean === 'NIFTY BANK' || clean === 'BANKNIFTY' || clean === 'NIFTY_BANK') {
+    return 260105;
+  }
+  if (clean === 'NIFTY IT' || clean === 'NIFTY_IT') {
+    return 257801;
+  }
+
+  // Check indices from map
   if (UNIVERSE_MAP[clean]) {
     return UNIVERSE_MAP[clean].token;
   }
+  if (UNIVERSE_MAP[normalizedKey]) {
+    return UNIVERSE_MAP[normalizedKey].token;
+  }
 
   // Check stocks
-  const stock = NIFTY_500_STOCKS.find(s => s.symbol === clean);
+  const stock = NIFTY_500_STOCKS.find(s => s.symbol === clean || s.symbol === normalizedKey);
   if (stock) {
     return stock.token;
   }

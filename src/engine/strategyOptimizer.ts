@@ -67,6 +67,8 @@ export type OptimizationObjective =
 export interface OptimizerFilterOptions {
   objective: OptimizationObjective;
   universe: IndexUniverse;
+  startDate?: string;
+  endDate?: string;
   maxDrawdownLimitPct?: number; // e.g. 15%
   minTradesLimit?: number; // e.g. 15 trades
   sweepDepth: 'standard' | 'deep'; // 24 vs 64 combinations
@@ -344,8 +346,8 @@ export function runStrategyOptimizerSweep(
             exitTiming: strat.id.includes('btst') ? 'same_open' : 'same_close',
             brokerageFlat: 0,
             slippageBps: 2,
-            startDate: '2020-01-01',
-            endDate: '2026-08-31',
+            startDate: options.startDate || '2020-01-01',
+            endDate: options.endDate || '2026-08-31',
             selectedPair: PAIR_CANDIDATES[0].pairId,
             selectedBasket: BASKET_CANDIDATES[0].basketId,
           };

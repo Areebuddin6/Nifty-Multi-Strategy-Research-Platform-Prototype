@@ -52,6 +52,38 @@
 }
 
 /* ==========================================================================
+   Smooth Theme Transitions across dark/light mode switches
+   ========================================================================== */
+html,
+body {
+  transition: background-color 280ms cubic-bezier(0.4, 0, 0.2, 1),
+              color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+header,
+nav,
+main,
+footer,
+section,
+aside,
+div[class*="bg-"],
+div[class*="border-"],
+table,
+thead,
+tbody,
+tr,
+th,
+td,
+button,
+input,
+select,
+textarea {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 280ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
    Comprehensive Light Theme Overrides for All Components & Views
    ========================================================================== */
 
@@ -88,35 +120,41 @@ html.light-theme header {
 .light-theme .bg-slate-950,
 .light-theme .bg-slate-950\/90,
 .light-theme .bg-slate-950\/80,
+.light-theme .bg-slate-950\/70,
+.light-theme .bg-slate-950\/60,
 .light-theme .bg-slate-950\/50,
 .light-theme .bg-slate-950\/40 {
-  background-color: #f8fafc !important;
-  border-color: #e2e8f0 !important;
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
 }
 
 /* 4. Interactive pills, inactive states & tags */
 .light-theme .bg-slate-850,
 .light-theme .bg-slate-850\/50,
 .light-theme .bg-slate-800,
+.light-theme .bg-slate-800\/90,
 .light-theme .bg-slate-800\/80,
 .light-theme .bg-slate-800\/60,
 .light-theme .bg-slate-800\/50,
 .light-theme .bg-slate-800\/40 {
-  background-color: #f1f5f9 !important;
-  border-color: #e2e8f0 !important;
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
 
 /* 5. Borders & Dividers */
 .light-theme .border-slate-800,
+.light-theme .border-slate-800\/90,
 .light-theme .border-slate-800\/80,
+.light-theme .border-slate-800\/70,
 .light-theme .border-slate-800\/60,
 .light-theme .border-slate-800\/50,
 .light-theme .border-slate-800\/40,
 .light-theme .border-slate-850 {
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
 
 .light-theme .border-slate-700,
+.light-theme .border-slate-700\/60,
 .light-theme .border-slate-700\/50 {
   border-color: #cbd5e1 !important;
 }
@@ -137,28 +175,35 @@ html.light-theme header {
 }
 
 .light-theme .text-slate-300 {
-  color: #334155 !important;
+  color: #1e293b !important;
 }
 
 .light-theme .text-slate-400 {
-  color: #475569 !important;
+  color: #334155 !important;
 }
 
 .light-theme .text-slate-500 {
-  color: #64748b !important;
+  color: #475569 !important;
 }
 
 .light-theme .text-slate-600 {
-  color: #64748b !important;
+  color: #475569 !important;
 }
 
 /* 7. Accent colors tuned for optimal contrast in Light Mode */
 .light-theme .text-emerald-400 {
-  color: #059669 !important;
+  color: #15803d !important;
 }
 
-.light-theme .text-emerald-300 {
-  color: #065f46 !important;
+.light-theme .text-emerald-300,
+.light-theme .text-emerald-200,
+.light-theme .text-emerald-100 {
+  color: #14532d !important;
+}
+
+.light-theme .border-emerald-500\/40,
+.light-theme .border-emerald-500\/30 {
+  border-color: #86efac !important;
 }
 
 .light-theme .bg-emerald-950\/80,
@@ -171,8 +216,16 @@ html.light-theme header {
 .light-theme .bg-emerald-500\/10,
 .light-theme .bg-emerald-500\/15,
 .light-theme .bg-emerald-500\/20 {
-  background-color: #d1fae5 !important;
-  color: #065f46 !important;
+  background-color: #dcfce7 !important;
+  color: #14532d !important;
+  border-color: #86efac !important;
+}
+
+.light-theme .bg-emerald-500\/25,
+.light-theme .bg-emerald-500\/30 {
+  background-color: #bbf7d0 !important;
+  color: #14532d !important;
+  border-color: #4ade80 !important;
 }
 
 .light-theme .text-rose-400 {
@@ -201,8 +254,15 @@ html.light-theme header {
   color: #d97706 !important;
 }
 
-.light-theme .text-amber-300 {
+.light-theme .text-amber-300,
+.light-theme .text-amber-200,
+.light-theme .text-amber-100 {
   color: #92400e !important;
+}
+
+.light-theme .border-amber-500\/40,
+.light-theme .border-amber-500\/30 {
+  border-color: #fcd34d !important;
 }
 
 .light-theme .bg-amber-950\/80,
@@ -216,7 +276,15 @@ html.light-theme header {
 .light-theme .bg-amber-500\/15,
 .light-theme .bg-amber-500\/20 {
   background-color: #fef3c7 !important;
-  color: #92400e !important;
+  color: #78350f !important;
+  border-color: #fcd34d !important;
+}
+
+.light-theme .bg-amber-500\/25,
+.light-theme .bg-amber-500\/30 {
+  background-color: #fde68a !important;
+  color: #78350f !important;
+  border-color: #f59e0b !important;
 }
 
 .light-theme .text-indigo-400 {
@@ -246,6 +314,14 @@ html.light-theme header {
 }
 
 /* 8. Interactive Form Controls, Inputs & Selects */
+input[type="date"] {
+  color-scheme: dark;
+}
+
+.light-theme input[type="date"] {
+  color-scheme: light !important;
+}
+
 .light-theme input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .light-theme select,
 .light-theme textarea {

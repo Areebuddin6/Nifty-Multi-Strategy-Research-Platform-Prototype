@@ -17,7 +17,8 @@ import {
   Scale,
   Zap,
   RefreshCw,
-  Percent
+  Percent,
+  Calendar
 } from 'lucide-react';
 import { 
   OptimizationResult, 
@@ -29,19 +30,31 @@ import { StrategyConfig, StrategyType, StrategyVariation, IndexUniverse } from '
 import { MetricHelpButton } from './MetricHelpButton';
 
 interface StrategyOptimizerViewProps {
-  onSelectAndApplyStrategy: (strat: StrategyType, variation: StrategyVariation, lookbackDays: number) => void;
+  onSelectAndApplyStrategy: (
+    strat: StrategyType, 
+    variation: StrategyVariation, 
+    lookbackDays: number,
+    startDate?: string,
+    endDate?: string
+  ) => void;
   onOpenMetricHelp: (metricId: string) => void;
   isSimpleMode?: boolean;
+  initialStartDate?: string;
+  initialEndDate?: string;
 }
 
 export const StrategyOptimizerView: React.FC<StrategyOptimizerViewProps> = ({
   onSelectAndApplyStrategy,
   onOpenMetricHelp,
   isSimpleMode = false,
+  initialStartDate = '2020-01-01',
+  initialEndDate = '2026-08-31',
 }) => {
   // Optimizer Filter & Objective States (Search & Discovery only - NO strategy engine config!)
   const [objective, setObjective] = useState<OptimizationObjective>('quant_score');
   const [universe, setUniverse] = useState<IndexUniverse>('nifty_50');
+  const [startDate, setStartDate] = useState<string>(initialStartDate);
+  const [endDate, setEndDate] = useState<string>(initialEndDate);
   const [maxDrawdownLimit, setMaxDrawdownLimit] = useState<number | undefined>(undefined);
   const [sweepDepth, setSweepDepth] = useState<'standard' | 'deep'>('standard');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -63,6 +76,8 @@ export const StrategyOptimizerView: React.FC<StrategyOptimizerViewProps> = ({
       const opts: OptimizerFilterOptions = {
         objective,
         universe,
+        startDate,
+        endDate,
         maxDrawdownLimitPct: maxDrawdownLimit,
         sweepDepth,
       };
@@ -87,6 +102,8 @@ export const StrategyOptimizerView: React.FC<StrategyOptimizerViewProps> = ({
       objective: 'quant_score',
       universe: 'nifty_50',
       sweepDepth: 'standard',
+      startDate,
+      endDate,
     };
     const initial = runStrategyOptimizerSweep(opts);
     setResults(initial);
@@ -266,6 +283,161 @@ export const StrategyOptimizerView: React.FC<StrategyOptimizerViewProps> = ({
           </div>
         </div>
 
+        {/* Historical Optimization Horizon & Macro Stress Regimes Selector */}
+        <div className="mt-4 pt-4 border-t border-slate-800/80">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div className="flex items-center space-x-2">
+              <Calendar className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-semibold text-slate-200">Historical Optimization Horizon:</span>
+              <span className="text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                {startDate} → {endDate} (
+                {((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1)} Years)
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-400">
+              Discovers models resilient across long-term market regimes (crashes, consolidation &amp; bull runs)
+            </span>
+          </div>
+
+          {/* Quick Horizon Presets & Custom Horizon */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {[
+              { label: '30 Years (1996–2026)', start: '1996-01-01', end: '2026-08-31', badge: 'Full NSE History' },
+              { label: '20 Years (2006–2026)', start: '2006-01-01', end: '2026-08-31', badge: 'Includes GFC' },
+              { label: '10 Years (2016–2026)', start: '2016-01-01', end: '2026-08-31', badge: 'DeMon & COVID' },
+              { label: '5 Years (2020–2026)', start: '2020-01-01', end: '2026-08-31', badge: 'COVID Supercycle' },
+              { label: '3 Years (2023–2026)', start: '2023-01-01', end: '2026-08-31', badge: 'High-Rate Regime' },
+            ].map((preset) => {
+              const isSelected = startDate === preset.start && endDate === preset.end;
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setStartDate(preset.start);
+                    setEndDate(preset.end);
+                  }}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center space-x-1.5 cursor-pointer ${
+                    isSelected
+                      ? 'bg-amber-500/15 border-amber-500 text-amber-300 font-semibold shadow-xs'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  }`}
+                >
+                  <span>{preset.label}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-semibold transition-colors ${
+                      isSelected
+                        ? 'bg-amber-500/25 text-amber-200 border border-amber-500/30'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                    }`}
+                  >
+                    {preset.badge}
+                  </span>
+                </button>
+              );
+            })}
+
+            {/* Dedicated Custom Horizon Selector */}
+            {(() => {
+              const isPreset = [
+                { start: '1996-01-01', end: '2026-08-31' },
+                { start: '2006-01-01', end: '2026-08-31' },
+                { start: '2016-01-01', end: '2026-08-31' },
+                { start: '2020-01-01', end: '2026-08-31' },
+                { start: '2023-01-01', end: '2026-08-31' },
+              ].some((p) => startDate === p.start && endDate === p.end);
+              const isCustom = !isPreset;
+
+              return (
+                <button
+                  type="button"
+                  id="custom-optimizer-horizon-button"
+                  onClick={() => {
+                    document.getElementById('opt-start-date')?.focus();
+                  }}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium flex items-center space-x-1.5 cursor-pointer ${
+                    isCustom
+                      ? 'bg-amber-500/15 border-amber-500 text-amber-300 font-semibold shadow-xs'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  }`}
+                >
+                  <span>Custom Horizon</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-semibold transition-colors ${
+                      isCustom
+                        ? 'bg-amber-500/25 text-amber-200 border border-amber-500/30'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                    }`}
+                  >
+                    {isCustom ? 'Active' : 'Custom Dates'}
+                  </span>
+                </button>
+              );
+            })()}
+          </div>
+
+          {/* Date Inputs for Custom Horizon & Active Macro Stress Regimes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs shadow-sm">
+            <div>
+              <label className="text-slate-400 block mb-1 font-semibold text-[11px] uppercase tracking-wider">Optimization Start Date</label>
+              <input
+                id="opt-start-date"
+                type="date"
+                value={startDate}
+                min="1996-01-01"
+                max={endDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-amber-500 font-mono text-xs shadow-xs transition-colors"
+              />
+            </div>
+            <div>
+              <label className="text-slate-400 block mb-1 font-semibold text-[11px] uppercase tracking-wider">Optimization End Date</label>
+              <input
+                id="opt-end-date"
+                type="date"
+                value={endDate}
+                min={startDate}
+                max="2026-12-31"
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-100 focus:outline-none focus:border-amber-500 font-mono text-xs shadow-xs transition-colors"
+              />
+            </div>
+
+            <div className="sm:col-span-2 flex flex-col justify-center">
+              <span className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider mb-1.5 block">
+                Macro Stress Regimes Tested:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { name: '2000 Dot-Com (-50%)', from: 2000, to: 2002 },
+                  { name: '2003-07 Capex Bull', from: 2003, to: 2007 },
+                  { name: '2008 Lehman GFC (-60%)', from: 2008, to: 2009 },
+                  { name: '2013 Taper Tantrum', from: 2013, to: 2013 },
+                  { name: '2016 DeMon', from: 2016, to: 2016 },
+                  { name: '2020 COVID (-38%)', from: 2020, to: 2020 },
+                  { name: '2021-26 SIP Boom', from: 2021, to: 2026 },
+                ].map((regime) => {
+                  const startYr = parseInt(startDate.slice(0, 4)) || 2020;
+                  const endYr = parseInt(endDate.slice(0, 4)) || 2026;
+                  const isActive = startYr <= regime.to && endYr >= regime.from;
+                  return (
+                    <span
+                      key={regime.name}
+                      className={`text-[10px] px-2.5 py-0.5 rounded-md border font-semibold transition-colors ${
+                        isActive
+                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-2xs'
+                          : 'bg-slate-800/80 border-slate-700/60 text-slate-400 font-medium'
+                      }`}
+                    >
+                      {regime.name}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Live Sweeping Progress Indicator */}
         {isSweeping && (
           <div className="mt-4 p-3.5 bg-slate-950 rounded-xl border border-amber-500/30 space-y-2">
@@ -348,6 +520,9 @@ export const StrategyOptimizerView: React.FC<StrategyOptimizerViewProps> = ({
                           </span>
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 shrink-0">
                             {res.candidate.lookbackDays}d Window
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-amber-400/90 border border-amber-500/20 shrink-0">
+                            {startDate.slice(0, 4)}–{endDate.slice(0, 4)} Horizon
                           </span>
                           {isTop1 && (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
@@ -564,7 +739,9 @@ export const StrategyOptimizerView: React.FC<StrategyOptimizerViewProps> = ({
                       onClick={() => onSelectAndApplyStrategy(
                         res.candidate.strategyId, 
                         res.candidate.variation, 
-                        res.candidate.lookbackDays
+                        res.candidate.lookbackDays,
+                        startDate,
+                        endDate
                       )}
                       className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs transition flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer shrink-0"
                     >

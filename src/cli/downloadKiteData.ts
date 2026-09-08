@@ -45,19 +45,19 @@ export interface Candle {
   volume: number;
 }
 
-interface DateChunk {
+export interface DateChunk {
   from: string;
   to: string;
   label: string;
 }
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Splits a broad multi-decade date range into safe, sequential chunks (default 365 days)
  * to comply with Zerodha Kite Connect API's per-request limit for daily candles.
  */
-function generateDateChunks(fromDateStr: string, toDateStr: string, chunkDays = 365): DateChunk[] {
+export function generateDateChunks(fromDateStr: string, toDateStr: string, chunkDays = 365): DateChunk[] {
   const chunks: DateChunk[] = [];
   const start = new Date(fromDateStr);
   const end = new Date(toDateStr);
@@ -91,7 +91,7 @@ function generateDateChunks(fromDateStr: string, toDateStr: string, chunkDays = 
 /**
  * Fetches candle data for a single date slice with exponential backoff and IPO detection.
  */
-async function fetchChunkWithRetry(
+export async function fetchChunkWithRetry(
   apiKey: string,
   accessToken: string,
   token: number,
@@ -170,7 +170,7 @@ async function fetchChunkWithRetry(
 /**
  * Downloads multi-decade candle history for a single instrument across all date chunks.
  */
-async function downloadInstrumentFullHistory(
+export async function downloadInstrumentFullHistory(
   apiKey: string,
   accessToken: string,
   token: number,
@@ -289,11 +289,14 @@ Examples:
 
   // Determine target symbols
   let targets: string[] = [];
+  let includeBenchmark = !args.includes('--no-index');
 
   if (symbolArg) {
     targets = [symbolArg];
+    includeBenchmark = false;
   } else if (symbolsList.length > 0) {
     targets = symbolsList;
+    includeBenchmark = false;
   } else if (universeArg) {
     targets = getUniverseStocks(universeArg);
     console.log(`Universe Selected:   ${universeArg} (${targets.length} total constituents)`);
@@ -306,6 +309,11 @@ Examples:
   if (limit > 0 && targets.length > limit) {
     console.log(`Constituent Limit:   Ingesting first ${limit} of ${targets.length} instruments`);
     targets = targets.slice(0, limit);
+  }
+
+  // Prepend benchmark index if downloading a universe or basket
+  if (includeBenchmark && !targets.includes('NIFTY 50') && !targets.includes('NIFTY_50')) {
+    targets.unshift('NIFTY 50');
   }
 
   // Generate multi-year date chunks
