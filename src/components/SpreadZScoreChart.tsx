@@ -1,226 +1,213 @@
-import React from 'react';
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  ReferenceLine,
-} from 'recharts';
-import { SpreadPoint } from '../engine/backtestSimulator';
-import { StrategyConfig, ThemeMode } from '../types';
-import { PAIR_CANDIDATES, BASKET_CANDIDATES } from '../data/historicalData';
+import React, { useState } from 'react';
+import { SpreadPoint } from '../types';
 
 interface SpreadZScoreChartProps {
-  spreadPoints: SpreadPoint[];
-  config: StrategyConfig;
-  theme?: ThemeMode;
+  data: SpreadPoint[];
+  entryZ: number;
+  exitZ: number;
+  pairName?: string;
 }
 
 export const SpreadZScoreChart: React.FC<SpreadZScoreChartProps> = ({
-  spreadPoints,
-  config,
-  theme = 'dark',
+  data,
+  entryZ,
+  exitZ,
+  pairName = 'Pair Spread',
 }) => {
-  const isPair = config.id === 'pairs_cointegration';
-  const isBasket = config.id === 'basket_meanreversion';
-  const isLight = theme === 'light';
+  const [hoveredPoint, setHoveredPoint] = useState<SpreadPoint | null>(null);
 
-  const pairInfo = isPair
-    ? PAIR_CANDIDATES.find((p) => p.pairId === config.selectedPair) || PAIR_CANDIDATES[0]
-    : null;
-
-  const basketInfo = isBasket
-    ? BASKET_CANDIDATES.find((b) => b.basketId === config.selectedBasket) || BASKET_CANDIDATES[0]
-    : null;
-
-  if (!isPair && !isBasket) {
+  if (!data || data.length === 0) {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-        <h4 className="text-base font-semibold text-slate-200 mb-2">
-          Spread &amp; Z-Score Tracking is strategy-specific
-        </h4>
-        <p className="text-xs max-w-md mx-auto text-slate-400 mb-4">
-          The active strategy is <span className="text-emerald-400 font-mono">{config.name}</span>.
-          Spread tracking and ADF cointegration mean-reversion analysis are enabled for Pairs Cointegration and Basket Stat-Arb.
-        </p>
-        <span className="text-xs font-mono text-slate-500">
-          Switch to "Pairs Cointegration" or "Basket Stat-Arb" in the configuration panel above to view real-time spread dynamics.
-        </span>
+      <div className="h-64 flex items-center justify-center text-slate-500 text-xs">
+        No spread / Z-score time series available. Select Pairs Cointegration or Basket Stat-Arb.
       </div>
     );
   }
 
-  const gridColor = isLight ? '#e2e8f0' : '#1e293b';
-  const axisColor = isLight ? '#64748b' : '#64748b';
-  const zeroLineColor = isLight ? '#94a3b8' : '#475569';
-  const tooltipStyle = isLight
-    ? {
-        backgroundColor: '#ffffff',
-        borderColor: '#e2e8f0',
-        borderRadius: '8px',
-        fontSize: '11px',
-        color: '#0f172a',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-      }
-    : {
-        backgroundColor: '#020617',
-        borderColor: '#334155',
-        borderRadius: '8px',
-        fontSize: '11px',
-        color: '#f8fafc',
-      };
+  const allZ = data.map(d => d.zScore);
+  const minZ = Math.min(-3.5, ...allZ);
+  const maxZ = Math.max(3.5, ...allZ);
 
-  const sampleRate = Math.max(1, Math.floor(spreadPoints.length / 140));
-  const chartData = spreadPoints.filter((_, idx) => idx % sampleRate === 0 || idx === spreadPoints.length - 1);
+  const width = 800;
+  const height = 280;
+  const padding = { top: 20, right: 30, bottom: 30, left: 55 };
+
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+
+  const getX = (index: number) => {
+    return padding.left + (index / (data.length - 1)) * chartWidth;
+  };
+
+  const getZ_Y = (z: number) => {
+    return padding.top + chartHeight - ((z - minZ) / (maxZ - minZ)) * chartHeight;
+  };
+
+  // Line path for Z-score
+  const zPath = data.reduce((path, point, i) => {
+    const x = getX(i);
+    const y = getZ_Y(point.zScore);
+    return `${path} ${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }, '');
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 transition-colors shadow-sm">
-      {/* Header with Cointegration & Spread Diagnostics */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 shadow-sm transition-colors">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div>
-          <div className="flex items-center space-x-2">
-            <h3 className="text-base font-semibold text-slate-100">
-              {isPair
-                ? `Pairs Cointegration Spread: ${pairInfo?.stockA} / ${pairInfo?.stockB}`
-                : `Basket Stat-Arb Dispersion: ${basketInfo?.name}`}
-            </h3>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-              {isPair ? 'ADF p=0.018 (Cointegrated)' : 'PCA Dispersion Normalized'}
+          <h3 className="text-sm font-semibold text-slate-100 flex items-center space-x-2">
+            <span>{pairName} Residual Spread &amp; Z-Score Tracking</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              ADF Cointegrated
             </span>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Rolling {config.lookbackDays}-day mean reversion window with entry at ±{config.entryZScore.toFixed(1)}σ, stop loss at ±{config.stopLossZScore.toFixed(1)}σ
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Statistical divergence from rolling hedge ratio equilibrium. Reversion triggered at ±{entryZ}σ threshold.
           </p>
         </div>
 
-        {/* Statistical Summary Badges */}
-        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-          {isPair && pairInfo && (
-            <>
-              <div className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-300">
-                <span className="text-slate-500">Hedge Ratio (β): </span>
-                <span className="text-emerald-400 font-semibold">{pairInfo.hedgeRatio}</span>
-              </div>
-              <div className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-300">
-                <span className="text-slate-500">Half-Life: </span>
-                <span className="text-slate-100 font-semibold">{pairInfo.halfLifeDays} days</span>
-              </div>
-              <div className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-300">
-                <span className="text-slate-500">Correlation: </span>
-                <span className="text-slate-100 font-semibold">{pairInfo.correlation}</span>
-              </div>
-            </>
-          )}
-
-          {isBasket && basketInfo && (
-            <>
-              <div className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-300">
-                <span className="text-slate-500">Basket Legs: </span>
-                <span className="text-emerald-400 font-semibold">{basketInfo.tickers.join(', ')}</span>
-              </div>
-              <div className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-300">
-                <span className="text-slate-500">Mean Corr: </span>
-                <span className="text-slate-100 font-semibold">{basketInfo.meanPairwiseCorrelation}</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Z-Score Chart */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-          <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-300">
-            Rolling Z-Score Time-Series &amp; Threshold Boundaries
-          </span>
-          <div className="flex items-center space-x-3 text-[11px] font-mono">
-            <span className="flex items-center space-x-1">
-              <span className="w-2.5 h-0.5 bg-emerald-400"></span>
-              <span className="text-emerald-400">Entry Threshold (±{config.entryZScore.toFixed(1)}σ)</span>
-            </span>
-            <span className="flex items-center space-x-1">
-              <span className="w-2.5 h-0.5 bg-rose-400"></span>
-              <span className="text-rose-400">Stop Loss (±{config.stopLossZScore.toFixed(1)}σ)</span>
-            </span>
-            <span className="flex items-center space-x-1">
-              <span className="w-2.5 h-0.5 bg-slate-400"></span>
-              <span className="text-slate-400">Mean (0.0)</span>
-            </span>
+        {hoveredPoint && (
+          <div className="text-xs font-mono text-slate-300 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+            <span>{hoveredPoint.date}: </span>
+            <span className="text-cyan-400 font-bold">Z: {hoveredPoint.zScore.toFixed(2)}σ</span>
+            <span className="text-slate-500 mx-1.5">|</span>
+            <span className="text-slate-400">Spread: ₹{hoveredPoint.spread.toFixed(2)}</span>
           </div>
-        </div>
-
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 10, right: 15, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="2 2" stroke={gridColor} vertical={false} />
-              <XAxis
-                dataKey="date"
-                stroke={axisColor}
-                fontSize={10}
-                tickFormatter={(d) => d.slice(0, 7)}
-              />
-              <YAxis
-                stroke={axisColor}
-                fontSize={10}
-                domain={[-4.5, 4.5]}
-                tickFormatter={(v) => `${v}σ`}
-                orientation="right"
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(val: any) => [`${Number(val).toFixed(2)} σ`, 'Normalized Z-Score']}
-                labelFormatter={(l) => `Date: ${l}`}
-              />
-
-              {/* Threshold lines */}
-              <ReferenceLine y={0} stroke={zeroLineColor} strokeWidth={1} />
-              <ReferenceLine y={config.entryZScore} stroke="#10b981" strokeDasharray="3 3" />
-              <ReferenceLine y={-config.entryZScore} stroke="#10b981" strokeDasharray="3 3" />
-              <ReferenceLine y={config.stopLossZScore} stroke="#f43f5e" strokeDasharray="2 2" />
-              <ReferenceLine y={-config.stopLossZScore} stroke="#f43f5e" strokeDasharray="2 2" />
-              <ReferenceLine y={config.exitZScore} stroke="#94a3b8" strokeDasharray="1 3" />
-              <ReferenceLine y={-config.exitZScore} stroke="#94a3b8" strokeDasharray="1 3" />
-
-              <Line
-                type="monotone"
-                dataKey="zScore"
-                name="Z-Score"
-                stroke="#38bdf8"
-                strokeWidth={1.8}
-                dot={false}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+        )}
       </div>
 
-      {/* Raw Spread Level Chart */}
-      <div className="mt-4 pt-4 border-t border-slate-800">
-        <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-          <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-300">
-            Raw Price Spread &amp; Moving Average Channel
-          </span>
-          <span className="font-mono text-[11px] text-slate-500">
-            {isPair ? `Price(A) - ${pairInfo?.hedgeRatio} × Price(B)` : 'Dispersion Index'}
-          </span>
-        </div>
-        <div className="h-40 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 5, right: 15, left: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="2 2" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="date" stroke={axisColor} fontSize={10} tickFormatter={(d) => d.slice(0, 7)} />
-              <YAxis stroke={axisColor} fontSize={10} orientation="right" />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Line type="monotone" dataKey="mean" stroke="#94a3b8" strokeWidth={1} dot={false} strokeDasharray="4 4" name="Rolling Mean" />
-              <Line type="monotone" dataKey="upperBand" stroke="#10b981" strokeWidth={1} dot={false} strokeDasharray="2 2" name="+Entry Band" />
-              <Line type="monotone" dataKey="lowerBand" stroke="#10b981" strokeWidth={1} dot={false} strokeDasharray="2 2" name="-Entry Band" />
-              <Line type="monotone" dataKey="spread" stroke="#a855f7" strokeWidth={1.5} dot={false} name="Actual Spread" />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="w-full overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full h-auto max-h-72 select-none"
+          onMouseLeave={() => setHoveredPoint(null)}
+        >
+          {/* Zero Mean Line */}
+          <line
+            x1={padding.left}
+            y1={getZ_Y(0)}
+            x2={width - padding.right}
+            y2={getZ_Y(0)}
+            stroke="#475569"
+            strokeWidth="1.5"
+          />
+
+          {/* +Entry Z threshold */}
+          <line
+            x1={padding.left}
+            y1={getZ_Y(entryZ)}
+            x2={width - padding.right}
+            y2={getZ_Y(entryZ)}
+            stroke="#ef4444"
+            strokeDasharray="4 4"
+            strokeWidth="1"
+          />
+          <text
+            x={width - padding.right + 4}
+            y={getZ_Y(entryZ) + 3}
+            className="fill-rose-400 text-[9px] font-mono"
+          >
+            +{entryZ}σ Short Spread
+          </text>
+
+          {/* -Entry Z threshold */}
+          <line
+            x1={padding.left}
+            y1={getZ_Y(-entryZ)}
+            x2={width - padding.right}
+            y2={getZ_Y(-entryZ)}
+            stroke="#10b981"
+            strokeDasharray="4 4"
+            strokeWidth="1"
+          />
+          <text
+            x={width - padding.right + 4}
+            y={getZ_Y(-entryZ) + 3}
+            className="fill-emerald-400 text-[9px] font-mono"
+          >
+            -{entryZ}σ Long Spread
+          </text>
+
+          {/* Exit threshold bounds */}
+          <line
+            x1={padding.left}
+            y1={getZ_Y(exitZ)}
+            x2={width - padding.right}
+            y2={getZ_Y(exitZ)}
+            stroke="#eab308"
+            strokeDasharray="2 2"
+            strokeWidth="0.8"
+          />
+          <line
+            x1={padding.left}
+            y1={getZ_Y(-exitZ)}
+            x2={width - padding.right}
+            y2={getZ_Y(-exitZ)}
+            stroke="#eab308"
+            strokeDasharray="2 2"
+            strokeWidth="0.8"
+          />
+
+          {/* Z-Ticks on Left Axis */}
+          {[-3, -2, -1, 0, 1, 2, 3].map((zVal) => {
+            const y = getZ_Y(zVal);
+            return (
+              <g key={zVal}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="#1e293b"
+                  strokeDasharray="2 2"
+                />
+                <text
+                  x={padding.left - 8}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="fill-slate-500 text-[10px] font-mono"
+                >
+                  {zVal > 0 ? `+${zVal}σ` : `${zVal}σ`}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Actual Z-score continuous path */}
+          <path
+            d={zPath}
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Hover interactive overlay */}
+          {data.map((point, i) => {
+            const x = getX(i);
+            return (
+              <rect
+                key={i}
+                x={x - chartWidth / data.length / 2}
+                y={padding.top}
+                width={chartWidth / data.length}
+                height={chartHeight}
+                fill="transparent"
+                onMouseEnter={() => setHoveredPoint(point)}
+                className="cursor-crosshair"
+              />
+            );
+          })}
+
+          {hoveredPoint && (
+            <circle
+              cx={getX(data.findIndex(d => d.date === hoveredPoint.date))}
+              cy={getZ_Y(hoveredPoint.zScore)}
+              r="4"
+              className="fill-cyan-400 stroke-slate-900 stroke-2"
+            />
+          )}
+        </svg>
       </div>
     </div>
   );

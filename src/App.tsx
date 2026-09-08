@@ -1,457 +1,439 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  Navbar, 
-  NavigationTab 
-} from './components/Navbar';
-import { StrategyControls } from './components/StrategyControls';
+  StrategyConfig, 
+  StrategyType, 
+  StrategyVariation, 
+  ThemeMode, 
+  SimulationResult 
+} from './types';
+import { runBacktestSimulation } from './engine/backtestSimulator';
+import { HISTORICAL_NIFTY_DAILY, PAIR_CANDIDATES, BASKET_CANDIDATES } from './data/historicalData';
+import { Navbar, NavigationTab } from './components/Navbar';
 import { OverviewMetrics } from './components/OverviewMetrics';
 import { SimpleOverviewMetrics } from './components/SimpleOverviewMetrics';
 import { SimpleStrategyLibrary } from './components/SimpleStrategyLibrary';
+import { StrategyControls } from './components/StrategyControls';
+import { StrategyOptimizerView } from './components/StrategyOptimizerView';
 import { EquityChart } from './components/EquityChart';
 import { SpreadZScoreChart } from './components/SpreadZScoreChart';
 import { MonthlyHeatmap } from './components/MonthlyHeatmap';
 import { TradeLogTable } from './components/TradeLogTable';
-import { CostAnalysisModal } from './components/CostAnalysisModal';
-import { VariationComparisonModal } from './components/VariationComparisonModal';
-import { HelpGuideModal, HelpSectionId } from './components/HelpGuideModal';
-import { MetricHelpModal } from './components/MetricHelpModal';
 import { CrossStrategyLeaderboard } from './components/CrossStrategyLeaderboard';
 import { ParameterSweepView } from './components/ParameterSweepView';
 import { BlueprintExplorer } from './components/BlueprintExplorer';
 import { DataTransparencyView } from './components/DataTransparencyView';
 import { KiteBrokerConnectView } from './components/KiteBrokerConnectView';
-import { StrategyOptimizerView } from './components/StrategyOptimizerView';
+import { CostAnalysisModal } from './components/CostAnalysisModal';
+import { VariationComparisonModal } from './components/VariationComparisonModal';
+import { HelpGuideModal, HelpSectionId } from './components/HelpGuideModal';
+import { MetricHelpModal } from './components/MetricHelpModal';
+import { TrendingUp, BarChart2, Award, ShieldCheck, IndianRupee, Sparkles } from 'lucide-react';
 
-import { 
-  StrategyConfig, 
-  StrategyType, 
-  ThemeMode, 
-  StrategyVariation, 
-  Trade, 
-  BacktestResult 
-} from './types';
-import { runBacktestSimulation } from './engine/backtestSimulator';
-import { HISTORICAL_NIFTY_DAILY, PAIR_CANDIDATES, BASKET_CANDIDATES } from './data/historicalData';
-
-export function App() {
-  // Theme state: dark by default, persists in localStorage
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('nifty_platform_theme');
-    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
-  });
-
-  // Simple vs Quant mode toggle
-  const [isSimpleMode, setIsSimpleMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('nifty_platform_ui_mode');
-    return saved === 'simple';
-  });
-
-  // Active navigation tab
+export default function App() {
+  // Navigation & View Modes
   const [activeTab, setActiveTab] = useState<NavigationTab>('backtest');
+  const [isSimpleMode, setIsSimpleMode] = useState<boolean>(true);
+  const [theme, setTheme] = useState<ThemeMode>('dark');
 
   // Modals state
   const [isCostModalOpen, setIsCostModalOpen] = useState<boolean>(false);
-  const [selectedTradeForCost, setSelectedTradeForCost] = useState<Trade | null>(null);
   const [isVariationModalOpen, setIsVariationModalOpen] = useState<boolean>(false);
-  const [isHelpModalOpen, setIsHelpModalOpen] = useState<boolean>(false);
+  const [isHelpGuideOpen, setIsHelpGuideOpen] = useState<boolean>(false);
   const [helpSection, setHelpSection] = useState<HelpSectionId>('overview');
-  const [helpTopicId, setHelpTopicId] = useState<string | undefined>(undefined);
+  const [isMetricModalOpen, setIsMetricModalOpen] = useState<boolean>(false);
+  const [activeMetricId, setActiveMetricId] = useState<string>('quant_score');
 
-  // Financial Metric Explainer Modal state
-  const [isMetricHelpModalOpen, setIsMetricHelpModalOpen] = useState<boolean>(false);
-  const [activeMetricHelpId, setActiveMetricHelpId] = useState<string>('quant_score');
-
-  const handleOpenMetricHelp = (metricId: string) => {
-    setActiveMetricHelpId(metricId);
-    setIsMetricHelpModalOpen(true);
-  };
-
-  // Strategy configuration
+  // Strategy Execution Configuration State
   const [config, setConfig] = useState<StrategyConfig>({
     id: 'supertrend_swing',
     name: 'Supertrend + 200 EMA Swing',
-    category: 'Swing',
-    universe: 'NIFTY_50',
+    category: 'Trend & Swing' as any,
+    universe: 'nifty_50',
     variation: 'balanced',
-    dataSource: 'calibrated_sandbox',
     lookbackDays: 60,
     entryZScore: 2.0,
     exitZScore: 0.5,
     stopLossZScore: 3.5,
-    initialCapital: 1000000,
+    initialCapital: 1000000, // ₹10,00,000 (10 Lakhs)
     maxPositions: 4,
     executionTiming: 'next_open',
     exitTiming: 'same_close',
     brokerageFlat: 0,
     slippageBps: 2,
-    startDate: '2018-01-01',
+    startDate: '2020-01-01',
     endDate: '2026-08-31',
     selectedPair: PAIR_CANDIDATES[0].pairId,
     selectedBasket: BASKET_CANDIDATES[0].basketId,
   });
 
-  const [isSimulating, setIsSimulating] = useState<boolean>(false);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
 
-  // Sync theme with HTML class
-  useEffect(() => {
-    localStorage.setItem('nifty_platform_theme', theme);
-    if (theme === 'light') {
-      document.documentElement.classList.add('light');
-    } else {
-      document.documentElement.classList.remove('light');
-    }
-  }, [theme]);
+  // Simulation Results Memoization
+  const simulationResult: SimulationResult = useMemo(() => {
+    return runBacktestSimulation(config, HISTORICAL_NIFTY_DAILY);
+  }, [config]);
 
-  // Sync UI mode with localStorage
-  useEffect(() => {
-    localStorage.setItem('nifty_platform_ui_mode', isSimpleMode ? 'simple' : 'quant');
-  }, [isSimpleMode]);
-
-  const handleToggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  // Strategy naming map
+  const strategyNames: Record<StrategyType, string> = {
+    supertrend_swing: 'Supertrend + 200 EMA Swing',
+    rsi_pullback: 'RSI Oversold Pullback (Buy The Dip)',
+    golden_cross: '50 EMA x 200 EMA Golden Cross',
+    donchian_breakout: '20-Day High Breakout (Turtle)',
+    btst_momentum: 'BTST Top Gainer (Momentum)',
+    btst_reversal: 'BTST Dip Buyer (Reversal)',
+    pairs_cointegration: 'Twin Stock Arbitrage (ADF Stat-Arb)',
+    basket_meanreversion: 'Sector Basket Stat-Arb (N-Leg)',
   };
 
-  const handleToggleMode = () => {
-    setIsSimpleMode((prev) => !prev);
+  const handleUpdateConfig = (updates: Partial<StrategyConfig>) => {
+    setConfig(prev => ({ ...prev, ...updates }));
+  };
+
+  const handleSelectStrategy = (stratId: StrategyType, variation?: StrategyVariation) => {
+    setConfig(prev => ({
+      ...prev,
+      id: stratId,
+      name: strategyNames[stratId] || stratId,
+      variation: variation || prev.variation,
+    }));
+  };
+
+  const handleRunStrategy = (stratId: StrategyType) => {
+    handleSelectStrategy(stratId);
+    setActiveTab('backtest');
+  };
+
+  // Called from StrategyOptimizerView when user selects a ranked recommendation
+  const handleSelectAndApplyFromOptimizer = (
+    stratId: StrategyType, 
+    variation: StrategyVariation, 
+    lookbackDays: number
+  ) => {
+    setConfig(prev => ({
+      ...prev,
+      id: stratId,
+      name: strategyNames[stratId] || stratId,
+      variation,
+      lookbackDays,
+    }));
+    setActiveTab('backtest');
+  };
+
+  const handleRunBacktest = () => {
+    setIsRunning(true);
+    setTimeout(() => {
+      setIsRunning(false);
+    }, 300);
   };
 
   const handleOpenHelp = (section: HelpSectionId = 'overview', topicId?: string) => {
     setHelpSection(section);
-    setHelpTopicId(topicId);
-    setIsHelpModalOpen(true);
+    setIsHelpGuideOpen(true);
   };
 
-  // Backtest calculation
-  const [result, setResult] = useState<BacktestResult>(() => {
-    return runBacktestSimulation(config, HISTORICAL_NIFTY_DAILY);
-  });
+  const handleOpenMetricHelp = (metricId: string) => {
+    setActiveMetricId(metricId);
+    setIsMetricModalOpen(true);
+  };
 
-  const handleRunBacktest = useCallback(() => {
-    setIsSimulating(true);
-    setTimeout(() => {
-      const res = runBacktestSimulation(config, HISTORICAL_NIFTY_DAILY);
-      setResult(res);
-      setIsSimulating(false);
-    }, 250);
-  }, [config]);
+  const handleApplySweepParameters = (lookback: number, entryZ: number, exitZ: number) => {
+    handleUpdateConfig({
+      lookbackDays: lookback,
+      entryZScore: entryZ,
+      exitZScore: exitZ,
+    });
+    setActiveTab('backtest');
+  };
 
-  // Trigger backtest on strategy changes
-  const handleSelectStrategyFromLibrary = (stratId: StrategyType, variation?: StrategyVariation) => {
-    let name = '';
-    let category: StrategyConfig['category'] = 'Swing';
-
-    switch (stratId) {
-      case 'supertrend_swing':
-        name = 'Supertrend + 200 EMA Swing';
-        category = 'Swing';
-        break;
-      case 'rsi_pullback':
-        name = 'RSI Oversold Pullback (Buy The Dip)';
-        category = 'Pullback';
-        break;
-      case 'golden_cross':
-        name = '50 EMA x 200 EMA Golden Cross';
-        category = 'Trend Following';
-        break;
-      case 'donchian_breakout':
-        name = '20-Day High Breakout';
-        category = 'Breakout';
-        break;
-      case 'btst_momentum':
-        name = 'BTST Top Gainer (Momentum)';
-        category = 'BTST';
-        break;
-      case 'btst_reversal':
-        name = 'BTST Dip Buyer (Reversal)';
-        category = 'BTST';
-        break;
-      case 'pairs_cointegration':
-        name = 'Twin Stock Arbitrage (ADF Stat-Arb)';
-        category = 'Statistical Arbitrage';
-        break;
-      case 'basket_meanreversion':
-        name = 'Sector Basket Stat-Arb';
-        category = 'Basket Stat-Arb';
-        break;
+  // Synchronize theme with html and body
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light-theme');
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+      document.body.classList.add('light-theme');
+      document.body.classList.remove('dark');
+      document.body.style.backgroundColor = '#f8fafc';
+      document.body.style.color = '#0f172a';
+    } else {
+      root.classList.remove('light-theme');
+      root.classList.add('dark');
+      root.setAttribute('data-theme', 'dark');
+      document.body.classList.remove('light-theme');
+      document.body.classList.add('dark');
+      document.body.style.backgroundColor = '#020617';
+      document.body.style.color = '#f8fafc';
     }
-
-    const newConfig: StrategyConfig = {
-      ...config,
-      id: stratId,
-      name,
-      category,
-      variation: variation || config.variation || 'balanced',
-    };
-
-    setConfig(newConfig);
-    const newRes = runBacktestSimulation(newConfig, HISTORICAL_NIFTY_DAILY);
-    setResult(newRes);
-    setActiveTab('backtest');
-  };
-
-  const handleOpenCostBreakdownForTrade = (trade: Trade) => {
-    setSelectedTradeForCost(trade);
-    setIsCostModalOpen(true);
-  };
-
-  const handleOpenTotalCostModal = () => {
-    setSelectedTradeForCost(null);
-    setIsCostModalOpen(true);
-  };
-
-  const handleApplyOptimizedStrategy = (candidate: any) => {
-    const updatedConfig: StrategyConfig = {
-      ...config,
-      id: candidate.strategyId,
-      name: candidate.strategyName,
-      category: candidate.category as any,
-      universe: candidate.universe,
-      variation: candidate.variation,
-      lookbackDays: candidate.lookbackDays,
-      entryZScore: candidate.entryZScore,
-      exitZScore: candidate.exitZScore,
-      stopLossZScore: candidate.stopLossZScore,
-    };
-    setConfig(updatedConfig);
-    const newRes = runBacktestSimulation(updatedConfig, HISTORICAL_NIFTY_DAILY);
-    setResult(newRes);
-    setActiveTab('backtest');
-  };
+  }, [theme]);
 
   return (
-    <div className={`min-h-screen bg-slate-950 text-slate-100 font-sans transition-colors duration-200 ${theme === 'light' ? 'light' : ''}`}>
-      {/* Navigation Bar with Theme Toggle */}
+    <div className={`min-h-screen ${theme === 'light' ? 'light-theme bg-slate-50 text-slate-900' : 'bg-slate-950 text-slate-100'} transition-colors duration-200`}>
+      {/* Platform Navigation Bar */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         strategyId={config.id}
         isSimpleMode={isSimpleMode}
-        onToggleMode={handleToggleMode}
+        onToggleMode={() => setIsSimpleMode(!isSimpleMode)}
         theme={theme}
-        onToggleTheme={handleToggleTheme}
+        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         onOpenHelp={handleOpenHelp}
       />
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Strategy Control Panel - Hidden in Strategy Optimizer section */}
-        {activeTab !== 'optimizer' && (
-          <StrategyControls
-            config={config}
-            onChangeConfig={setConfig}
-            onRunBacktest={handleRunBacktest}
-            isSimulating={isSimulating}
-            isSimpleMode={isSimpleMode}
-            onOpenVariationModal={() => setIsVariationModalOpen(true)}
-          />
-        )}
-
-        {/* Tab 1: Backtest Results & Overview */}
+        {/* VIEW 1: BACKTEST RESULTS & OVERVIEW */}
         {activeTab === 'backtest' && (
           <div>
-            {/* Overview Metrics Cards */}
+            {/* Strategy Execution Controls - Only in Backtest tab where parameter execution belongs! */}
+            <StrategyControls
+              config={config}
+              onUpdateConfig={handleUpdateConfig}
+              onRunBacktest={handleRunBacktest}
+              isRunning={isRunning}
+              isSimpleMode={isSimpleMode}
+              onOpenVariationModal={() => setIsVariationModalOpen(true)}
+              onOpenCostModal={() => setIsCostModalOpen(true)}
+              onOpenHelp={handleOpenHelp}
+              onOpenMetricHelp={handleOpenMetricHelp}
+            />
+
+            {/* Performance Metrics Cards */}
             {isSimpleMode ? (
               <SimpleOverviewMetrics
-                stats={result.stats}
+                stats={simulationResult.stats}
                 initialCapital={config.initialCapital}
-                costs={result.totalCosts}
-                onOpenCostModal={handleOpenTotalCostModal}
+                costs={simulationResult.totalCosts}
+                onOpenCostModal={() => setIsCostModalOpen(true)}
                 onOpenHelp={handleOpenHelp}
                 onOpenMetricHelp={handleOpenMetricHelp}
               />
             ) : (
               <OverviewMetrics
-                stats={result.stats}
+                stats={simulationResult.stats}
                 initialCapital={config.initialCapital}
-                costs={result.totalCosts}
+                costs={simulationResult.totalCosts}
                 onOpenHelp={handleOpenHelp}
                 onOpenMetricHelp={handleOpenMetricHelp}
               />
             )}
 
-            {/* Performance Equity Curve with Theme Support */}
-            <EquityChart
-              dailyReturns={result.dailyReturns}
-              initialCapital={config.initialCapital}
-              theme={theme}
-            />
+            {/* Equity Curve Chart */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 mb-6 shadow-sm transition-colors">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                    <span>Compounded Portfolio Equity Growth (Net of All Indian Taxes)</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Realistic growth curves simulated with statutory 0.1% STT, 18% GST, and next-day 9:15 AM execution.
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setIsCostModalOpen(true)}
+                    className="text-xs text-amber-400 hover:underline flex items-center space-x-1 cursor-pointer"
+                  >
+                    <IndianRupee className="w-3.5 h-3.5" />
+                    <span>View Cost Schedule</span>
+                  </button>
+                </div>
+              </div>
 
-            {/* Spread / Z-Score Chart (if pairs or basket) */}
+              <EquityChart
+                data={simulationResult.dailyReturns.map(d => ({
+                  date: d.date,
+                  equity: d.portfolioValue,
+                  benchmarkEquity: d.benchmarkValue,
+                  drawdownPct: d.drawdown,
+                }))}
+                initialCapital={config.initialCapital}
+              />
+            </div>
+
+            {/* If Pair or Basket Strategy, display Spread Chart */}
             {(config.id === 'pairs_cointegration' || config.id === 'basket_meanreversion') && (
               <SpreadZScoreChart
-                spreadPoints={result.spreadPoints || []}
-                config={config}
-                theme={theme}
+                data={simulationResult.spreadPoints}
+                entryZ={config.entryZScore}
+                exitZ={config.exitZScore}
+                pairName={config.name}
               />
             )}
 
-            {/* Monthly Returns Heatmap with Theme Support */}
-            <MonthlyHeatmap
-              monthlyReturns={result.monthlyReturns}
-              theme={theme}
-            />
+            {/* Monthly Heatmap */}
+            <MonthlyHeatmap data={simulationResult.monthlyReturns} />
 
-            {/* Executed Trades Table */}
+            {/* Quick Preview of Trade Log */}
             <TradeLogTable
-              trades={result.trades}
-              onOpenCostBreakdown={handleOpenCostBreakdownForTrade}
+              trades={simulationResult.trades.slice(-15)}
+              totalCosts={simulationResult.totalCosts}
+              isSimpleMode={isSimpleMode}
             />
           </div>
         )}
 
-        {/* Tab: Quantitative Strategy Optimizer & Screener */}
+        {/* VIEW 2: STRATEGY OPTIMIZER (CLEAN SCREENER - NO ENGINE CONFIGURATION!) */}
         {activeTab === 'optimizer' && (
           <StrategyOptimizerView
-            currentConfig={config}
-            onApplyOptimizedStrategy={handleApplyOptimizedStrategy}
-            isSimpleMode={isSimpleMode}
-            theme={theme}
-            onOpenHelp={handleOpenHelp}
+            onSelectAndApplyStrategy={handleSelectAndApplyFromOptimizer}
             onOpenMetricHelp={handleOpenMetricHelp}
+            isSimpleMode={isSimpleMode}
           />
         )}
 
-        {/* Tab 2: Strategy Library (Simple Mode) */}
+        {/* VIEW 3: STRATEGY LIBRARY */}
         {activeTab === 'strategies' && (
           <SimpleStrategyLibrary
             currentStrategyId={config.id}
-            onSelectStrategy={handleSelectStrategyFromLibrary}
-            onRunStrategy={(s) => {
-              handleSelectStrategyFromLibrary(s);
-            }}
+            onSelectStrategy={handleSelectStrategy}
+            onRunStrategy={handleRunStrategy}
           />
         )}
 
-        {/* Tab 3: Spread & Z-Score (Quant Mode) */}
-        {activeTab === 'spread' && (
-          <SpreadZScoreChart
-            spreadPoints={result.spreadPoints || []}
-            config={config}
-            theme={theme}
-          />
-        )}
-
-        {/* Tab 4: Cross-Strategy Leaderboard (Phase 6) */}
-        {activeTab === 'leaderboard' && (
-          <CrossStrategyLeaderboard
-            currentUniverse={config.universe}
-            onSelectStrategy={handleSelectStrategyFromLibrary}
-            onOpenMetricHelp={handleOpenMetricHelp}
-          />
-        )}
-
-        {/* Tab 5: Trade Log */}
+        {/* VIEW 4: TRADE HISTORY */}
         {activeTab === 'trades' && (
           <TradeLogTable
-            trades={result.trades}
-            onOpenCostBreakdown={handleOpenCostBreakdownForTrade}
+            trades={simulationResult.trades}
+            totalCosts={simulationResult.totalCosts}
+            isSimpleMode={isSimpleMode}
           />
         )}
 
-        {/* Tab 6: Parameter Grid Sweep */}
+        {/* VIEW 5: COSTS & TAX AUDIT */}
+        {activeTab === 'costs' && (
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+              <div className="pb-4 border-b border-slate-800">
+                <div className="flex items-center space-x-2 text-xs text-slate-400 mb-1">
+                  <IndianRupee className="w-4 h-4 text-amber-400" />
+                  <span className="font-semibold uppercase tracking-wider text-amber-500">
+                    Indian Statutory Compliance
+                  </span>
+                  <span>•</span>
+                  <span>Ministry of Finance / SEBI Tariff Schedule</span>
+                </div>
+                <h2 className="text-xl font-bold text-white">
+                  Statutory Tax, Levy &amp; Brokerage Friction Audit
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Every trade in this platform complies strictly with Indian equity delivery taxation rules.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <span className="text-xs text-slate-400 block font-medium">Securities Transaction Tax (STT)</span>
+                  <span className="text-xl font-bold font-mono text-amber-400 mt-1 block">
+                    ₹{simulationResult.totalCosts.stt.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[11px] text-slate-500 mt-1 block">0.1% on buy and sell turnover</span>
+                </div>
+
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <span className="text-xs text-slate-400 block font-medium">GST + Exchange Turnover</span>
+                  <span className="text-xl font-bold font-mono text-slate-200 mt-1 block">
+                    ₹{(simulationResult.totalCosts.gst + simulationResult.totalCosts.exchangeFees).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[11px] text-slate-500 mt-1 block">18% GST + 0.00297% NSE fees</span>
+                </div>
+
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                  <span className="text-xs text-slate-400 block font-medium">Total Friction Deducted</span>
+                  <span className="text-xl font-bold font-mono text-rose-400 mt-1 block">
+                    ₹{simulationResult.totalCosts.total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[11px] text-emerald-400 mt-1 block">Already deducted from equity</span>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => setIsCostModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs transition cursor-pointer"
+                >
+                  Open Full Government Tariff Schedule Table
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 6: SPREAD & Z-SCORE */}
+        {activeTab === 'spread' && (
+          <SpreadZScoreChart
+            data={simulationResult.spreadPoints}
+            entryZ={config.entryZScore}
+            exitZ={config.exitZScore}
+            pairName={config.name}
+          />
+        )}
+
+        {/* VIEW 7: CROSS STRATEGY LEADERBOARD */}
+        {activeTab === 'leaderboard' && (
+          <CrossStrategyLeaderboard
+            onSelectStrategy={handleSelectStrategy}
+            currentStrategyId={config.id}
+          />
+        )}
+
+        {/* VIEW 8: PARAMETER SWEEP */}
         {activeTab === 'sweep' && (
           <ParameterSweepView
             config={config}
-            onApplyParameters={(lb, ez) => {
-              const updated = {
-                ...config,
-                lookbackDays: lb,
-                entryZScore: ez,
-              };
-              setConfig(updated);
-              const newRes = runBacktestSimulation(updated, HISTORICAL_NIFTY_DAILY);
-              setResult(newRes);
-              setActiveTab('backtest');
-            }}
+            onApplyParameters={handleApplySweepParameters}
           />
         )}
 
-        {/* Tab 7: Blueprint & Invariants */}
+        {/* VIEW 9: BLUEPRINT & INVARIANTS */}
         {activeTab === 'blueprint' && (
           <BlueprintExplorer />
         )}
 
-        {/* Tab 8: Taxes & Brokerage Breakdown */}
-        {activeTab === 'costs' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm transition-colors">
-            <h2 className="text-xl font-bold text-white mb-2">
-              Statutory Taxes &amp; Brokerage Ledger
-            </h2>
-            <p className="text-xs text-slate-400 mb-6">
-              Complete breakdown of every rupee paid to the Government of India, NSE, and broker during this backtest.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-xs text-slate-400">Total Statutory STT (0.1%)</span>
-                <span className="text-xl font-bold font-mono text-amber-400 block mt-1">
-                  ₹{result.totalCosts.stt.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </span>
-              </div>
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-xs text-slate-400">Exchange &amp; SEBI Turnover Fees</span>
-                <span className="text-xl font-bold font-mono text-white block mt-1">
-                  ₹{(result.totalCosts.exchangeFees + result.totalCosts.sebiCharges).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </span>
-              </div>
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
-                <span className="text-xs text-slate-400">Total Friction Impact</span>
-                <span className="text-xl font-bold font-mono text-rose-400 block mt-1">
-                  ₹{result.totalCosts.total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                </span>
-              </div>
-            </div>
-            <TradeLogTable
-              trades={result.trades}
-              onOpenCostBreakdown={handleOpenCostBreakdownForTrade}
-            />
-          </div>
+        {/* VIEW 10: DATA TRANSPARENCY */}
+        {activeTab === 'transparency' && (
+          <DataTransparencyView
+            onOpenHelp={handleOpenHelp}
+            onNavigateToKite={() => setActiveTab('kite')}
+          />
         )}
 
-        {/* Tab 9: Zerodha Kite Data Connection */}
+        {/* VIEW 11: ZERODHA KITE CONNECT */}
         {activeTab === 'kite' && (
           <KiteBrokerConnectView />
         )}
-
-        {/* Tab 10: Data Transparency & Integrity */}
-        {activeTab === 'transparency' && (
-          <DataTransparencyView />
-        )}
       </main>
 
-      {/* Modals */}
+      {/* MODALS */}
+      {/* 1. Metric Help Explainer Modal */}
+      <MetricHelpModal
+        isOpen={isMetricModalOpen}
+        onClose={() => setIsMetricModalOpen(false)}
+        initialMetricId={activeMetricId}
+      />
+
+      {/* 2. Statutory Cost Schedule Modal */}
       <CostAnalysisModal
         isOpen={isCostModalOpen}
         onClose={() => setIsCostModalOpen(false)}
-        costs={result.totalCosts}
-        selectedTrade={selectedTradeForCost}
+        costs={simulationResult.totalCosts}
       />
 
+      {/* 3. Strategy Variation Selector Modal */}
       <VariationComparisonModal
         isOpen={isVariationModalOpen}
         onClose={() => setIsVariationModalOpen(false)}
         config={config}
-        onSelectVariation={(v) => {
-          const updated = { ...config, variation: v };
-          setConfig(updated);
-          const newRes = runBacktestSimulation(updated, HISTORICAL_NIFTY_DAILY);
-          setResult(newRes);
-        }}
+        onSelectVariation={(variation) => handleUpdateConfig({ variation })}
       />
 
+      {/* 4. Methodology & Rules Guide Modal */}
       <HelpGuideModal
-        isOpen={isHelpModalOpen}
-        onClose={() => setIsHelpModalOpen(false)}
+        isOpen={isHelpGuideOpen}
+        onClose={() => setIsHelpGuideOpen(false)}
         initialSection={helpSection}
-        initialTopicId={helpTopicId}
-      />
-
-      <MetricHelpModal
-        isOpen={isMetricHelpModalOpen}
-        onClose={() => setIsMetricHelpModalOpen(false)}
-        initialMetricId={activeMetricHelpId}
       />
     </div>
   );
 }
-
-export default App;

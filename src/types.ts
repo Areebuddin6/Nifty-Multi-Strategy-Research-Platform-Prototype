@@ -10,7 +10,31 @@ export type StrategyType =
 
 export type StrategyVariation = 'conservative' | 'balanced' | 'aggressive';
 
-export type IndexUniverse = 'NIFTY_50' | 'NIFTY_100' | 'NIFTY_250' | 'NIFTY_500';
+export type IndexUniverse = 
+  | 'NIFTY_50' 
+  | 'NIFTY_NEXT_50' 
+  | 'NIFTY_100' 
+  | 'NIFTY_200' 
+  | 'NIFTY_MIDCAP_50'
+  | 'NIFTY_MIDCAP_100'
+  | 'NIFTY_MIDCAP_150'
+  | 'NIFTY_SMALLCAP_50'
+  | 'NIFTY_SMALLCAP_100'
+  | 'NIFTY_SMALLCAP_250'
+  | 'NIFTY_500'
+  | 'NIFTY_BANK'
+  | 'NIFTY_IT'
+  | 'NIFTY_AUTO'
+  | 'NIFTY_PHARMA'
+  | 'NIFTY_FMCG'
+  | 'NIFTY_METAL'
+  | 'NIFTY_ENERGY'
+  | 'nifty_50'
+  | 'nifty_next_50'
+  | 'nifty_100'
+  | 'nifty_200'
+  | 'nifty_midcap_100'
+  | 'nifty_500';
 
 export type DataSourceType = 'calibrated' | 'kite_broker';
 
@@ -19,9 +43,9 @@ export type ThemeMode = 'dark' | 'light';
 export interface StrategyConfig {
   id: StrategyType;
   name: string;
-  category: 'Trend Following' | 'Mean Reversion' | 'Breakout' | 'BTST' | 'Statistical Arbitrage' | 'Basket Stat-Arb' | 'Swing' | 'Pullback';
+  category: 'Trend Following' | 'Mean Reversion' | 'Breakout' | 'BTST' | 'Statistical Arbitrage' | 'Basket Stat-Arb' | 'Swing' | 'Pullback' | 'Trend & Swing';
   universe: IndexUniverse;
-  variation?: StrategyVariation;
+  variation: StrategyVariation;
   lookbackDays: number;
   entryZScore: number;
   exitZScore: number;
@@ -100,12 +124,14 @@ export interface Trade {
   exitDate: string;
   exitPrice: number;
   quantity: number;
+  shares?: number;
   holdingDays: number;
   grossPnl: number;
   grossPnlPercent: number;
   cost: TradeCost;
   netPnl: number;
   netPnlPercent: number;
+  netReturnPct?: number;
   entryZScore?: number;
   exitZScore?: number;
   exitReason: string;
@@ -127,6 +153,33 @@ export interface DailyReturn {
   benchmarkDrawdown: number;
   openPositionsCount: number;
   cash: number;
+}
+
+export interface EquityCurvePoint {
+  date: string;
+  equity: number;
+  benchmarkEquity: number;
+  drawdownPct: number;
+}
+
+export interface SpreadPoint {
+  date: string;
+  spread: number;
+  mean: number;
+  zScore: number;
+  upperBand?: number;
+  lowerBand?: number;
+  upperStop?: number;
+  lowerStop?: number;
+  tradeAction?: 'LONG' | 'SHORT' | 'EXIT' | 'STOP';
+}
+
+export interface MonthlyReturn {
+  year: number;
+  month?: number;
+  returnPct?: number;
+  months?: { [month: number]: number };
+  annualTotal?: number;
 }
 
 export interface PerformanceStats {
@@ -187,12 +240,6 @@ export interface BasketCandidate {
   currentZScore: number;
 }
 
-export interface MonthlyReturn {
-  year: number;
-  months: { [month: number]: number }; // 1-12, return in %
-  annualTotal: number;
-}
-
 export interface BlueprintPhase {
   phase: number;
   title: string;
@@ -203,17 +250,20 @@ export interface BlueprintPhase {
   keyRule: string;
 }
 
-export interface BacktestResult {
+export interface SimulationResult {
   config: StrategyConfig;
   trades: Trade[];
   dailyReturns: DailyReturn[];
   monthlyReturns: MonthlyReturn[];
-  spreadPoints: any[];
+  equityCurve: EquityCurvePoint[];
+  spreadPoints: SpreadPoint[];
   stats: PerformanceStats;
   totalCosts: CostBreakdown;
   dataSource?: DataSourceType;
   brokerCandlesCount?: number;
 }
+
+export type BacktestResult = SimulationResult;
 
 export interface LeaderboardEntry {
   strategyId: StrategyType;
@@ -227,4 +277,3 @@ export interface LeaderboardEntry {
   dsrScore: number;
   totalCostsPaid: number;
 }
-

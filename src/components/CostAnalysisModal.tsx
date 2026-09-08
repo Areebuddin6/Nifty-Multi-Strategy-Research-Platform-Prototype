@@ -17,15 +17,17 @@ export const CostAnalysisModal: React.FC<CostAnalysisModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const displayCosts = selectedTrade ? selectedTrade.cost : costs;
+  const displayCosts = selectedTrade ? (selectedTrade.cost || costs) : costs;
+  const totalAmount = displayCosts?.total ?? (displayCosts as any)?.totalCost ?? 0;
 
   const formatINR = (val: number) => {
-    return `₹${val.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
+    const num = val ?? 0;
+    return `₹${num.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
   };
 
   const getPercent = (amount: number) => {
-    if (displayCosts.total === 0) return '0.0%';
-    return ((amount / displayCosts.total) * 100).toFixed(1) + '%';
+    if (!totalAmount || totalAmount === 0) return '0.0%';
+    return (((amount ?? 0) / totalAmount) * 100).toFixed(1) + '%';
   };
 
   return (
@@ -42,7 +44,7 @@ export const CostAnalysisModal: React.FC<CostAnalysisModalProps> = ({
               <span>NSE Equity Delivery</span>
             </div>
             <h2 className="text-lg font-bold text-white mt-0.5">
-              {selectedTrade ? `${selectedTrade.symbol} Detailed Tax Breakdown` : 'Indian Statutory Tax & Friction Audit'}
+              {selectedTrade ? `${selectedTrade.symbol || selectedTrade.ticker || 'Trade'} Detailed Tax Breakdown` : 'Indian Statutory Tax & Friction Audit'}
             </h2>
           </div>
           <button
@@ -57,7 +59,7 @@ export const CostAnalysisModal: React.FC<CostAnalysisModalProps> = ({
         <div className="my-5 p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
           <div>
             <span className="text-xs text-slate-400 block">Total Statutory Friction Deducted</span>
-            <span className="text-2xl font-bold font-mono text-amber-400">{formatINR(displayCosts.total)}</span>
+            <span className="text-2xl font-bold font-mono text-amber-400">{formatINR(totalAmount)}</span>
           </div>
           <div className="text-right text-xs text-slate-400">
             <span className="block font-semibold text-emerald-400">100% Tax Compliant</span>

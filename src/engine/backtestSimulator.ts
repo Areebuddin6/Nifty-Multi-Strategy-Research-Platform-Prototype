@@ -11,6 +11,7 @@ import {
   CostBreakdown,
 } from '../types';
 import { PAIR_CANDIDATES, BASKET_CANDIDATES } from '../data/historicalData';
+import { getUniverseStocks, UNIVERSE_MAP } from '../data/niftyUniverses';
 
 export interface SpreadPoint {
   date: string;
@@ -52,6 +53,23 @@ function randomNormal(rand: () => number, mean = 0, std = 1): number {
   const u2 = rand();
   const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
   return z0 * std + mean;
+}
+
+// Calibrate realistic starting Nifty 50 benchmark levels based on historical year
+function getHistoricalNiftyStartingPrice(year: number): number {
+  if (year <= 1996) return 1000;
+  if (year <= 2000) return 1000 + (year - 1996) * 115; // 1996: 1,000 -> 2000: 1,460
+  if (year <= 2003) return 1460 - (year - 2000) * 120; // 2000-2003 Dot-com bear market: 1,460 -> 1,100
+  if (year <= 2007) return 1100 + (year - 2003) * 1250; // 2003-2007 Historic Bull Run: 1,100 -> 6,100
+  if (year === 2008) return 6140; // Jan 2008 peak
+  if (year === 2009) return 3030; // post-Lehman trough
+  if (year <= 2013) return 3030 + (year - 2009) * 650; // 2009-2013: 3030 -> 5,600
+  if (year <= 2017) return 6100 + (year - 2014) * 800; // 2014-2017: 6,100 -> 8,700
+  if (year <= 2019) return 10500;
+  if (year <= 2020) return 12200;
+  if (year <= 2022) return 14300;
+  if (year <= 2024) return 18100;
+  return 21500;
 }
 
 export function runBacktestSimulation(
@@ -97,16 +115,66 @@ export function runBacktestSimulation(
   }
 
   const benchmarkPrices: number[] = [];
-  let benchPrice = 10500;
+  let benchPrice = getHistoricalNiftyStartingPrice(startYear);
+
+  // If real NIFTY 50 candles exist in local broker cache, use them directly
+  const niftyCachedCandles = brokerCandles?.['NIFTY 50'] || brokerCandles?.['NIFTY50'];
+  const hasNiftyRealCandles = niftyCachedCandles && niftyCachedCandles.length > 20;
+
   for (let i = 0; i < tradingDates.length; i++) {
     const date = tradingDates[i];
+
+    if (hasNiftyRealCandles) {
+      const match = niftyCachedCandles.find(c => c.date === date);
+      if (match) {
+        benchPrice = match.close;
+        benchmarkPrices.push(benchPrice);
+        continue;
+      }
+    }
+
     let dailyDrift = 0.00045;
     let dailyVol = 0.0085;
 
-    if (date >= '2020-02-15' && date <= '2020-03-24') {
-      dailyDrift = -0.018;
-      dailyVol = 0.035;
+    // Comprehensive 30-Year Indian Historical Market Regimes
+    if (date >= '2000-03-01' && date <= '2001-09-30') {
+      // Dot-com crash & Ketan Parekh scandal
+      dailyDrift = -0.0018;
+      dailyVol = 0.024;
+    } else if (date >= '2003-05-01' && date <= '2007-12-31') {
+      // 2003-2007 Indian Capex & Infrastructure Supercycle
+      dailyDrift = 0.0016;
+      dailyVol = 0.012;
+    } else if (date >= '2008-01-10' && date <= '2008-10-31') {
+      // Global Financial Crisis Lehman crash (-60% on Nifty)
+      dailyDrift = -0.0042;
+      dailyVol = 0.038;
+    } else if (date >= '2009-03-15' && date <= '2010-11-05') {
+      // Post-GFC V-Shaped liquidity recovery
+      dailyDrift = 0.0028;
+      dailyVol = 0.018;
+    } else if (date >= '2011-01-01' && date <= '2011-12-31') {
+      // European debt crisis & taper concerns
+      dailyDrift = -0.0012;
+      dailyVol = 0.014;
+    } else if (date >= '2014-01-01' && date <= '2015-02-28') {
+      // Modi Election & Macro Reform Rally
+      dailyDrift = 0.0018;
+      dailyVol = 0.010;
+    } else if (date >= '2015-08-01' && date <= '2016-02-28') {
+      // China FX devaluation & Commodities shock
+      dailyDrift = -0.0014;
+      dailyVol = 0.013;
+    } else if (date >= '2016-11-08' && date <= '2016-12-31') {
+      // Demonetization dip
+      dailyDrift = -0.0016;
+      dailyVol = 0.016;
+    } else if (date >= '2020-02-15' && date <= '2020-03-24') {
+      // COVID-19 Flash Crash
+      dailyDrift = -0.022;
+      dailyVol = 0.045;
     } else if (date >= '2020-04-01' && date <= '2020-12-31') {
+      // Post-COVID Demat & Tech Supercycle
       dailyDrift = 0.0022;
       dailyVol = 0.015;
     } else if (date >= '2021-01-01' && date <= '2021-10-15') {
@@ -121,7 +189,7 @@ export function runBacktestSimulation(
     }
 
     const shock = randomNormal(rand, dailyDrift, dailyVol);
-    benchPrice = Math.max(benchPrice * (1 + shock), 2000);
+    benchPrice = Math.max(benchPrice * (1 + shock), 800);
     benchmarkPrices.push(benchPrice);
   }
 
@@ -131,12 +199,17 @@ export function runBacktestSimulation(
   const selectedPairCandidate = PAIR_CANDIDATES.find(p => p.pairId === config.selectedPair) || PAIR_CANDIDATES[0];
   const stockACandles = isBrokerMode && brokerCandles ? (brokerCandles[selectedPairCandidate.stockA] || brokerCandles['HDFCBANK']) : undefined;
   const stockBCandles = isBrokerMode && brokerCandles ? (brokerCandles[selectedPairCandidate.stockB] || brokerCandles['ICICIBANK']) : undefined;
+  const brokerSymbolsCount = brokerCandles ? Object.keys(brokerCandles).length : 0;
   const singleCandles = isBrokerMode && brokerCandles ? (brokerCandles['NIFTY 50'] || brokerCandles['HDFCBANK'] || Object.values(brokerCandles)[0]) : undefined;
 
   if (isBrokerMode && config.id === 'pairs_cointegration' && stockACandles && stockBCandles && stockACandles.length > 20) {
     simulatePairsBroker(config, stockACandles, stockBCandles, trades, spreadPoints);
+  } else if (isBrokerMode && brokerCandles && brokerSymbolsCount > 1) {
+    // Multi-stock portfolio backtesting across all downloaded Kite historical candles
+    simulateMultiStockBroker(config, brokerCandles, trades);
   } else if (isBrokerMode && singleCandles && singleCandles.length > 20) {
-    simulateSingleStockBroker(config, singleCandles, 'NIFTY 50 / BLUECHIP', trades);
+    const sym = Object.keys(brokerCandles!)[0] || 'NIFTY 50 / BLUECHIP';
+    simulateSingleStockBroker(config, singleCandles, sym, trades);
   } else {
     if (config.id === 'btst_momentum' || config.id === 'btst_reversal') {
       simulateBTST(config, tradingDates, benchmarkPrices, rand, trades);
@@ -385,17 +458,20 @@ function simulatePairsBroker(
         const totalCostVal = costA.totalCost + costB.totalCost;
         const netPnl = grossPnl - totalCostVal;
         const netPnlPercent = ((netPnl) / (positionSize * 2)) * 100;
+        const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
         trades.push({
           id: `KITE_PAIR_${activeEntryDate}_${selectedPairCandidate.pairId}`,
           strategyId: config.id,
           ticker: `${selectedPairCandidate.stockA} / ${selectedPairCandidate.stockB} [Kite]`,
+          symbol: `${selectedPairCandidate.stockA} / ${selectedPairCandidate.stockB}`,
           side: inPosition,
           entryDate: activeEntryDate,
           entryPrice: parseFloat(spreads[Math.max(0, i - activeHoldingDays)].toFixed(2)),
           exitDate: date,
           exitPrice: parseFloat(spread.toFixed(2)),
           quantity: qtyA,
+          shares: qtyA,
           holdingDays: activeHoldingDays,
           grossPnl: parseFloat(grossPnl.toFixed(2)),
           grossPnlPercent: parseFloat(grossPnlPercent.toFixed(2)),
@@ -405,7 +481,8 @@ function simulatePairsBroker(
             total: totalCostVal,
           },
           netPnl: parseFloat(netPnl.toFixed(2)),
-          netPnlPercent: parseFloat(netPnlPercent.toFixed(2)),
+          netPnlPercent: netReturnVal,
+          netReturnPct: netReturnVal,
           exitReason,
         });
 
@@ -486,23 +563,27 @@ function simulateSingleStockBroker(
         const cost = calculateTradeCost(entryPrice, close, qty, config.brokerageFlat, config.slippageBps);
         const netPnl = grossPnl - cost.totalCost;
         const netPnlPercent = (netPnl / (entryPrice * qty)) * 100;
+        const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
         trades.push({
           id: `KITE_${config.id}_${entryDate}_${symbol}`,
           strategyId: config.id,
           ticker: `${symbol} [Kite]`,
+          symbol,
           side: 'BUY',
           entryDate,
           entryPrice,
           exitDate: date,
           exitPrice: close,
           quantity: qty,
+          shares: qty,
           holdingDays,
           grossPnl: parseFloat(grossPnl.toFixed(2)),
           grossPnlPercent: parseFloat(grossPnlPercent.toFixed(2)),
           cost,
           netPnl: parseFloat(netPnl.toFixed(2)),
-          netPnlPercent: parseFloat(netPnlPercent.toFixed(2)),
+          netPnlPercent: netReturnVal,
+          netReturnPct: netReturnVal,
           exitReason,
         });
 
@@ -541,6 +622,51 @@ function simulateSingleStockBroker(
   }
 }
 
+/**
+ * Multi-stock portfolio backtest runner across all downloaded Zerodha Kite historical candles.
+ * Dynamically enforces capital allocation and position limits (maxPositions) across the universe.
+ */
+function simulateMultiStockBroker(
+  config: StrategyConfig,
+  brokerCandles: Record<string, KiteCandle[]>,
+  trades: Trade[]
+) {
+  const symbols = Object.keys(brokerCandles).filter(s => s !== 'NIFTY 50' && s !== 'NIFTY50');
+  if (symbols.length === 0) {
+    const defaultSym = Object.keys(brokerCandles)[0];
+    if (defaultSym) simulateSingleStockBroker(config, brokerCandles[defaultSym], defaultSym, trades);
+    return;
+  }
+
+  const candidateTrades: Trade[] = [];
+  for (const sym of symbols) {
+    const candles = brokerCandles[sym];
+    if (!candles || candles.length < 25) continue;
+    simulateSingleStockBroker(config, candles, sym, candidateTrades);
+  }
+
+  // Sort candidate trades by entryDate ascending
+  candidateTrades.sort((a, b) => a.entryDate.localeCompare(b.entryDate));
+
+  // Enforce portfolio capacity: max concurrent active positions
+  const maxPos = config.maxPositions || 4;
+  const activePositions: { sym: string; exitDate: string }[] = [];
+
+  for (const t of candidateTrades) {
+    // Drop positions that have exited before or on this trade's entryDate
+    const stillActive = activePositions.filter(p => p.exitDate > t.entryDate);
+    if (stillActive.length < maxPos) {
+      stillActive.push({ sym: t.symbol, exitDate: t.exitDate });
+      activePositions.length = 0;
+      activePositions.push(...stillActive);
+      trades.push(t);
+    }
+  }
+
+  // Sort final trades by exitDate ascending
+  trades.sort((a, b) => a.exitDate.localeCompare(b.exitDate));
+}
+
 function simulateBTST(
   config: StrategyConfig,
   tradingDates: string[],
@@ -549,11 +675,7 @@ function simulateBTST(
   trades: Trade[]
 ) {
   const isMomentum = config.id === 'btst_momentum';
-  const universeStocks = [
-    'RELIANCE', 'TCS', 'HDFCBANK', 'ICICIBANK', 'INFY', 'BHARTIARTL',
-    'TATAMOTORS', 'M&M', 'LT', 'AXISBANK', 'MARUTI', 'SUNPHARMA',
-    'TITAN', 'BAJFINANCE', 'WIPRO', 'ONGC', 'NTPC', 'TATASTEEL', 'ITC'
-  ];
+  const universeStocks = getUniverseStocks(config.universe);
 
   const positionSize = config.initialCapital * 0.20;
   const tradeFrequency = 0.22;
@@ -587,23 +709,27 @@ function simulateBTST(
     const cost = calculateTradeCost(entryPrice, exitPrice, quantity, config.brokerageFlat, config.slippageBps);
     const netPnl = grossPnl - cost.totalCost;
     const netPnlPercent = (netPnl / (entryPrice * quantity)) * 100;
+    const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
     trades.push({
       id: `BTST_${entryDate}_${ticker}`,
       strategyId: config.id,
       ticker,
+      symbol: ticker,
       side: 'BUY',
       entryDate,
       entryPrice,
       exitDate,
       exitPrice,
       quantity,
+      shares: quantity,
       holdingDays: 1,
       grossPnl,
       grossPnlPercent,
       cost,
       netPnl,
-      netPnlPercent,
+      netPnlPercent: netReturnVal,
+      netReturnPct: netReturnVal,
       exitReason: 'NEXT_OPEN_EXIT',
     });
   }
@@ -711,23 +837,27 @@ function simulatePairs(
 
         const netPnl = grossPnl - totalTradeCost.totalCost;
         const netPnlPercent = (netPnl / positionSize) * 100;
+        const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
         trades.push({
           id: `PAIR_${activeEntryDate}_${selectedPairCandidate.pairId}`,
           strategyId: 'pairs_cointegration',
           ticker: `${selectedPairCandidate.stockA} / ${selectedPairCandidate.stockB}`,
+          symbol: `${selectedPairCandidate.stockA} / ${selectedPairCandidate.stockB}`,
           side: inPosition,
           entryDate: activeEntryDate,
           entryPrice: activeEntrySpread,
           exitDate: date,
           exitPrice: spread,
           quantity: 1,
+          shares: 1,
           holdingDays: activeHoldingDays,
           grossPnl,
           grossPnlPercent: grossReturnPct,
           cost: totalTradeCost,
           netPnl,
-          netPnlPercent,
+          netPnlPercent: netReturnVal,
+          netReturnPct: netReturnVal,
           entryZScore: activeEntryZ,
           exitZScore: zScore,
           exitReason,
@@ -869,23 +999,27 @@ function simulateBasket(
         const cost = calculateTradeCost(1000, 1000 * (1 + delta), Math.floor(positionSize / 1000), config.brokerageFlat, config.slippageBps);
         const netPnl = grossPnl - cost.totalCost;
         const netPnlPercent = (netPnl / positionSize) * 100;
+        const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
         trades.push({
           id: `BASKET_${activeEntryDate}_${basket.basketId}`,
           strategyId: 'basket_meanreversion',
           ticker: `${basket.name} (${basket.tickers.length} Legs)`,
+          symbol: basket.name,
           side: inPosition,
           entryDate: activeEntryDate,
           entryPrice: activeEntrySpread,
           exitDate: date,
           exitPrice: basketSpread,
           quantity: 1,
+          shares: 1,
           holdingDays: activeHoldingDays,
           grossPnl,
           grossPnlPercent: grossReturnPct,
           cost,
           netPnl,
-          netPnlPercent,
+          netPnlPercent: netReturnVal,
+          netReturnPct: netReturnVal,
           entryZScore: activeEntryZ,
           exitZScore: zScore,
           exitReason,
@@ -940,10 +1074,7 @@ function simulateSupertrendSwing(
   trades: Trade[]
 ) {
   const variation = config.variation || 'balanced';
-  const universe = [
-    'RELIANCE', 'TATAMOTORS', 'M&M', 'BHARTIARTL', 'INFY', 'LT',
-    'ICICIBANK', 'SUNPHARMA', 'MARUTI', 'TATASTEEL', 'BAJFINANCE', 'NTPC'
-  ];
+  const universe = getUniverseStocks(config.universe);
 
   let targetPct = 0.10;
   let stopLossPct = 0.055;
@@ -1015,23 +1146,27 @@ function simulateSupertrendSwing(
     const cost = calculateTradeCost(entryPrice, exitPrice, quantity, config.brokerageFlat, config.slippageBps);
     const netPnl = grossPnl - cost.totalCost;
     const netPnlPercent = (netPnl / (entryPrice * quantity)) * 100;
+    const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
     trades.push({
       id: `SUPERTREND_${entryDate}_${ticker}`,
       strategyId: 'supertrend_swing',
       ticker,
+      symbol: ticker,
       side: 'BUY',
       entryDate,
       entryPrice,
       exitDate,
       exitPrice,
       quantity,
+      shares: quantity,
       holdingDays: exitIndex - i,
       grossPnl,
       grossPnlPercent,
       cost,
       netPnl,
-      netPnlPercent,
+      netPnlPercent: netReturnVal,
+      netReturnPct: netReturnVal,
       exitReason,
     });
 
@@ -1047,10 +1182,7 @@ function simulateRSIPullback(
   trades: Trade[]
 ) {
   const variation = config.variation || 'balanced';
-  const universe = [
-    'HDFCBANK', 'TCS', 'RELIANCE', 'INFY', 'KOTAKBANK', 'HINDUNILVR',
-    'TITAN', 'ITC', 'ASIANPAINT', 'BAJFINANCE', 'AXISBANK'
-  ];
+  const universe = getUniverseStocks(config.universe);
 
   let targetPct = 0.055;
   let stopLossPct = 0.035;
@@ -1121,23 +1253,27 @@ function simulateRSIPullback(
     const cost = calculateTradeCost(entryPrice, exitPrice, quantity, config.brokerageFlat, config.slippageBps);
     const netPnl = grossPnl - cost.totalCost;
     const netPnlPercent = (netPnl / (entryPrice * quantity)) * 100;
+    const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
     trades.push({
       id: `RSI_DIP_${entryDate}_${ticker}`,
       strategyId: 'rsi_pullback',
       ticker,
+      symbol: ticker,
       side: 'BUY',
       entryDate,
       entryPrice,
       exitDate,
       exitPrice,
       quantity,
+      shares: quantity,
       holdingDays: exitIndex - i,
       grossPnl,
       grossPnlPercent,
       cost,
       netPnl,
-      netPnlPercent,
+      netPnlPercent: netReturnVal,
+      netReturnPct: netReturnVal,
       exitReason,
     });
 
@@ -1153,10 +1289,7 @@ function simulateGoldenCross(
   trades: Trade[]
 ) {
   const variation = config.variation || 'balanced';
-  const universe = [
-    'RELIANCE', 'LT', 'BHARTIARTL', 'TATAMOTORS', 'M&M', 'ICICIBANK',
-    'TCS', 'INFY', 'SUNPHARMA', 'MARUTI', 'NTPC', 'POWERGRID'
-  ];
+  const universe = getUniverseStocks(config.universe);
 
   let targetPct = 0.22;
   let stopLossPct = 0.075;
@@ -1223,23 +1356,27 @@ function simulateGoldenCross(
     const cost = calculateTradeCost(entryPrice, exitPrice, quantity, config.brokerageFlat, config.slippageBps);
     const netPnl = grossPnl - cost.totalCost;
     const netPnlPercent = (netPnl / (entryPrice * quantity)) * 100;
+    const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
     trades.push({
       id: `GOLDEN_CROSS_${entryDate}_${ticker}`,
       strategyId: 'golden_cross',
       ticker,
+      symbol: ticker,
       side: 'BUY',
       entryDate,
       entryPrice,
       exitDate,
       exitPrice,
       quantity,
+      shares: quantity,
       holdingDays: exitIndex - i,
       grossPnl,
       grossPnlPercent,
       cost,
       netPnl,
-      netPnlPercent,
+      netPnlPercent: netReturnVal,
+      netReturnPct: netReturnVal,
       exitReason,
     });
 
@@ -1255,10 +1392,7 @@ function simulateDonchianBreakout(
   trades: Trade[]
 ) {
   const variation = config.variation || 'balanced';
-  const universe = [
-    'TATAMOTORS', 'BHARTIARTL', 'RELIANCE', 'LT', 'BAJFINANCE',
-    'TATASTEEL', 'SUNPHARMA', 'M&M', 'TITAN', 'ONGC', 'NTPC'
-  ];
+  const universe = getUniverseStocks(config.universe);
 
   let targetPct = 0.12;
   let stopLossPct = 0.06;
@@ -1321,23 +1455,27 @@ function simulateDonchianBreakout(
     const cost = calculateTradeCost(entryPrice, exitPrice, quantity, config.brokerageFlat, config.slippageBps);
     const netPnl = grossPnl - cost.totalCost;
     const netPnlPercent = (netPnl / (entryPrice * quantity)) * 100;
+    const netReturnVal = parseFloat(netPnlPercent.toFixed(2));
 
     trades.push({
       id: `BREAKOUT_${entryDate}_${ticker}`,
       strategyId: 'donchian_breakout',
       ticker,
+      symbol: ticker,
       side: 'BUY',
       entryDate,
       entryPrice,
       exitDate,
       exitPrice,
       quantity,
+      shares: quantity,
       holdingDays: exitIndex - i,
       grossPnl,
       grossPnlPercent,
       cost,
       netPnl,
-      netPnlPercent,
+      netPnlPercent: netReturnVal,
+      netReturnPct: netReturnVal,
       exitReason,
     });
 

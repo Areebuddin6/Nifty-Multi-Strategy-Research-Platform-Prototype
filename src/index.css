@@ -2,184 +2,358 @@
 
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-  .font-mono {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  }
-
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #475569;
-    border-radius: 9999px;
-  }
-  html.light ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    @apply bg-slate-950 text-slate-100 antialiased font-sans selection:bg-emerald-500/30 selection:text-emerald-200;
   }
 }
 
-/* Base dark variables (default) */
-:root {
-  --color-slate-950: #020617;
-  --color-slate-900: #0f172a;
-  --color-slate-850: #172033;
-  --color-slate-800: #1e293b;
-  --color-slate-700: #334155;
-  --color-slate-600: #475569;
-  --color-slate-500: #64748b;
-  --color-slate-400: #94a3b8;
-  --color-slate-300: #cbd5e1;
-  --color-slate-200: #e2e8f0;
-  --color-slate-100: #f8fafc;
+/* Custom scrollbar styling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* Light Theme Variables */
-html.light, .light {
-  --color-slate-950: #f8fafc;
-  --color-slate-900: #ffffff;
-  --color-slate-850: #f1f5f9;
-  --color-slate-800: #e2e8f0;
-  --color-slate-700: #cbd5e1;
-  --color-slate-600: #94a3b8;
-  --color-slate-500: #64748b;
-  --color-slate-400: #475569;
-  --color-slate-300: #334155;
-  --color-slate-200: #1e293b;
-  --color-slate-100: #0f172a;
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-/* Light Theme Global Refinements */
-html.light body {
-  background-color: #f8fafc;
-  color: #0f172a;
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
 }
 
-html.light .bg-slate-950 {
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.7);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.9);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ==========================================================================
+   Comprehensive Light Theme Overrides for All Components & Views
+   ========================================================================== */
+
+html.light-theme {
+  color-scheme: light;
+}
+
+html.light-theme,
+html.light-theme body {
   background-color: #f8fafc !important;
+  color: #0f172a !important;
 }
 
-html.light .bg-slate-900 {
+/* 1. Header & Navigation */
+html.light-theme header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* 2. Main Cards & Panels */
+.light-theme .bg-slate-900,
+.light-theme .bg-slate-900\/90,
+.light-theme .bg-slate-900\/80,
+.light-theme .bg-slate-900\/60,
+.light-theme .bg-slate-900\/50,
+.light-theme .bg-slate-900\/40 {
   background-color: #ffffff !important;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
 }
 
-html.light .bg-slate-850 {
-  background-color: #f1f5f9 !important;
-}
-
-html.light .border-slate-800 {
+/* 3. Sub-wells, Inset Containers & Code blocks */
+.light-theme .bg-slate-950,
+.light-theme .bg-slate-950\/90,
+.light-theme .bg-slate-950\/80,
+.light-theme .bg-slate-950\/50,
+.light-theme .bg-slate-950\/40 {
+  background-color: #f8fafc !important;
   border-color: #e2e8f0 !important;
 }
 
-html.light .border-slate-700 {
+/* 4. Interactive pills, inactive states & tags */
+.light-theme .bg-slate-850,
+.light-theme .bg-slate-850\/50,
+.light-theme .bg-slate-800,
+.light-theme .bg-slate-800\/80,
+.light-theme .bg-slate-800\/60,
+.light-theme .bg-slate-800\/50,
+.light-theme .bg-slate-800\/40 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* 5. Borders & Dividers */
+.light-theme .border-slate-800,
+.light-theme .border-slate-800\/80,
+.light-theme .border-slate-800\/60,
+.light-theme .border-slate-800\/50,
+.light-theme .border-slate-800\/40,
+.light-theme .border-slate-850 {
+  border-color: #e2e8f0 !important;
+}
+
+.light-theme .border-slate-700,
+.light-theme .border-slate-700\/50 {
   border-color: #cbd5e1 !important;
 }
 
-html.light h1,
-html.light h2,
-html.light h3,
-html.light h4,
-html.light .text-white {
+.light-theme .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+.light-theme .divide-slate-800\/60 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
+/* 6. Text Hierarchy */
+.light-theme .text-white,
+.light-theme .text-slate-100 {
   color: #0f172a !important;
 }
 
-html.light .text-slate-100 {
-  color: #0f172a !important;
-}
-
-html.light .text-slate-200 {
+.light-theme .text-slate-200 {
   color: #1e293b !important;
 }
 
-html.light .text-slate-300 {
+.light-theme .text-slate-300 {
   color: #334155 !important;
 }
 
-html.light .text-slate-400 {
+.light-theme .text-slate-400 {
   color: #475569 !important;
 }
 
-html.light .text-slate-500 {
+.light-theme .text-slate-500 {
   color: #64748b !important;
 }
 
-/* Input, Select & Form elements in Light Mode */
-html.light select,
-html.light input[type="text"],
-html.light input[type="date"],
-html.light input[type="password"] {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
+.light-theme .text-slate-600 {
+  color: #64748b !important;
 }
 
-html.light select:focus,
-html.light input:focus {
-  border-color: #10b981 !important;
-  box-shadow: 0 0 0 1px #10b981 !important;
+/* 7. Accent colors tuned for optimal contrast in Light Mode */
+.light-theme .text-emerald-400 {
+  color: #059669 !important;
 }
 
-html.light select option {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
+.light-theme .text-emerald-300 {
+  color: #065f46 !important;
 }
 
-/* Buttons with emerald fill keep crisp dark text in light mode */
-html.light .bg-emerald-500,
-html.light .hover\:bg-emerald-600:hover {
-  color: #022c22 !important;
-}
-
-/* Tables in Light Mode */
-html.light thead {
-  background-color: #f8fafc !important;
-}
-
-html.light thead th {
-  color: #475569 !important;
-}
-
-html.light tbody tr:hover {
-  background-color: #f8fafc !important;
-}
-
-/* Badges & Alert boxes in Light Mode */
-html.light .bg-emerald-950\/30,
-html.light .bg-emerald-950\/40,
-html.light .bg-emerald-950\/70 {
+.light-theme .bg-emerald-950\/80,
+.light-theme .bg-emerald-950 {
   background-color: #ecfdf5 !important;
   border-color: #a7f3d0 !important;
   color: #065f46 !important;
 }
 
-html.light .bg-amber-950\/30,
-html.light .bg-amber-950\/40,
-html.light .bg-amber-950\/60 {
-  background-color: #fffbeb !important;
-  border-color: #fde68a !important;
-  color: #92400e !important;
+.light-theme .bg-emerald-500\/10,
+.light-theme .bg-emerald-500\/15,
+.light-theme .bg-emerald-500\/20 {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
 }
 
-html.light .bg-rose-950\/40,
-html.light .bg-rose-950\/60 {
+.light-theme .text-rose-400 {
+  color: #e11d48 !important;
+}
+
+.light-theme .text-rose-300 {
+  color: #9f1239 !important;
+}
+
+.light-theme .bg-rose-950\/80,
+.light-theme .bg-rose-950 {
   background-color: #fff1f2 !important;
   border-color: #fecdd3 !important;
   color: #9f1239 !important;
 }
 
-/* Modals & Popups in Light Mode */
-html.light .bg-slate-950\/80 {
-  background-color: rgba(15, 23, 42, 0.45) !important;
+.light-theme .bg-rose-500\/10,
+.light-theme .bg-rose-500\/15,
+.light-theme .bg-rose-500\/20 {
+  background-color: #ffe4e6 !important;
+  color: #9f1239 !important;
 }
 
-html.light pre,
-html.light code {
-  color: #0f172a;
+.light-theme .text-amber-400 {
+  color: #d97706 !important;
+}
+
+.light-theme .text-amber-300 {
+  color: #92400e !important;
+}
+
+.light-theme .bg-amber-950\/80,
+.light-theme .bg-amber-950 {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+.light-theme .bg-amber-500\/10,
+.light-theme .bg-amber-500\/15,
+.light-theme .bg-amber-500\/20 {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+}
+
+.light-theme .text-indigo-400 {
+  color: #4f46e5 !important;
+}
+
+.light-theme .text-indigo-300 {
+  color: #3730a3 !important;
+}
+
+.light-theme .bg-indigo-950\/80,
+.light-theme .bg-indigo-950 {
+  background-color: #eef2ff !important;
+  border-color: #c7d2fe !important;
+  color: #3730a3 !important;
+}
+
+.light-theme .text-cyan-400 {
+  color: #0284c7 !important;
+}
+
+.light-theme .bg-cyan-950\/80,
+.light-theme .bg-cyan-950 {
+  background-color: #f0f9ff !important;
+  border-color: #bae6fd !important;
+  color: #0369a1 !important;
+}
+
+/* 8. Interactive Form Controls, Inputs & Selects */
+.light-theme input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.light-theme select,
+.light-theme textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light-theme input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+.light-theme select:focus,
+.light-theme textarea:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 1px #10b981 !important;
+}
+
+.light-theme select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* 9. Buttons & Interactive Elements */
+.light-theme button.bg-slate-900,
+.light-theme button.bg-slate-850,
+.light-theme button.bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light-theme button.bg-slate-900:hover,
+.light-theme button.bg-slate-850:hover,
+.light-theme button.bg-slate-800:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.light-theme .hover\:bg-slate-800:hover,
+.light-theme .hover\:bg-slate-850:hover,
+.light-theme .hover\:bg-slate-700:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.light-theme .hover\:text-white:hover,
+.light-theme .hover\:text-slate-200:hover {
+  color: #0f172a !important;
+}
+
+/* 10. Tables & Trade History */
+.light-theme table thead {
+  background-color: #f8fafc !important;
+}
+
+.light-theme table thead th {
+  color: #475569 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.light-theme table tbody tr:hover,
+.light-theme tr.hover\:bg-slate-850\/50:hover,
+.light-theme tr.hover\:bg-slate-800\/40:hover {
+  background-color: #f8fafc !important;
+}
+
+/* 11. Modals & Dialog Overlays */
+.light-theme .fixed.inset-0.bg-black\/80,
+.light-theme .fixed.inset-0.bg-slate-950\/80 {
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.light-theme .fixed .bg-slate-900,
+.light-theme .fixed .bg-slate-950 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 12. SVG Charts (Equity Curve & Spread Z-Score) */
+.light-theme svg line[stroke="#1e293b"] {
+  stroke: #e2e8f0 !important;
+}
+
+.light-theme svg line[stroke="#475569"] {
+  stroke: #cbd5e1 !important;
+}
+
+.light-theme svg text.fill-slate-500 {
+  fill: #64748b !important;
+}
+
+.light-theme svg text.fill-slate-400 {
+  fill: #475569 !important;
+}
+
+.light-theme svg text.fill-slate-300 {
+  fill: #1e293b !important;
+}
+
+/* 13. Light Theme Scrollbar */
+.light-theme ::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.8);
+}
+
+.light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(203, 213, 225, 0.9);
+}
+
+.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 1);
 }

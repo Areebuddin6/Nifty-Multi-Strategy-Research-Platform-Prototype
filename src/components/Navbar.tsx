@@ -53,29 +53,47 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleTheme,
   onOpenHelp,
 }) => {
+  const isLight = theme === 'light';
+
+  const tabInactiveClass = isLight
+    ? 'border-transparent text-slate-600 hover:text-slate-950 hover:border-slate-300'
+    : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700';
+
+  const tabActiveEmerald = isLight
+    ? 'border-emerald-600 text-emerald-700 bg-emerald-50 font-semibold'
+    : 'border-emerald-500 text-emerald-400 bg-emerald-500/5';
+
+  const tabActiveAmber = isLight
+    ? 'border-amber-600 text-amber-700 bg-amber-50 font-semibold'
+    : 'border-amber-500 text-amber-400 bg-amber-500/5';
+
   return (
-    <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-40 transition-colors">
+    <header className={`border-b sticky top-0 z-40 transition-colors backdrop-blur ${
+      isLight ? 'border-slate-200 bg-white/95 text-slate-900 shadow-xs' : 'border-slate-800 bg-slate-950/80 text-slate-100'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
         {/* Logo & Platform identity */}
         <div className="flex items-center space-x-3">
-          <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-mono font-bold text-lg shadow-sm">
+          <div className={`h-9 w-9 rounded-lg border flex items-center justify-center font-mono font-bold text-lg shadow-sm ${
+            isLight ? 'bg-emerald-50 border-emerald-300 text-emerald-700' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+          }`}>
             N
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="text-base font-semibold text-slate-100 tracking-tight">
+              <h1 className={`text-base font-semibold tracking-tight ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
                 Nifty Multi-Strategy Research Platform
               </h1>
               <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-full border font-bold flex items-center space-x-1.5 ${
                 isSimpleMode 
-                  ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300' 
-                  : 'bg-indigo-950/80 border-indigo-500/50 text-indigo-300'
+                  ? (isLight ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300')
+                  : (isLight ? 'bg-indigo-50 border-indigo-300 text-indigo-800' : 'bg-indigo-950/80 border-indigo-500/50 text-indigo-300')
               }`}>
-                <span className={`w-2 h-2 rounded-full ${isSimpleMode ? 'bg-emerald-400 animate-pulse' : 'bg-indigo-400 animate-pulse'}`} />
+                <span className={`w-2 h-2 rounded-full ${isSimpleMode ? 'bg-emerald-500 animate-pulse' : 'bg-indigo-500 animate-pulse'}`} />
                 <span>{isSimpleMode ? 'SIMPLE (RETAIL)' : 'QUANT (ADVANCED)'}</span>
               </span>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
               {isSimpleMode 
                 ? 'Simplified, tax-adjusted backtesting & strategy discovery for Indian retail traders' 
                 : 'Point-in-Time Indian Equities Quantitative Engine • Delivery STT & DSR Compliant'}
@@ -86,18 +104,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Right side: Mode Switcher, Theme Switch, Status */}
         <div className="flex items-center space-x-2">
           {/* HIGH VISIBILITY SEGMENTED MODE SELECTOR */}
-          <div className="flex items-center bg-slate-950/90 p-1 rounded-2xl border border-slate-800 shadow-inner">
+          <div className={`flex items-center p-1 rounded-2xl border shadow-inner ${
+            isLight ? 'bg-slate-100 border-slate-300' : 'bg-slate-950/90 border-slate-800'
+          }`}>
             <button
               id="btn-mode-simple"
               onClick={() => { if (!isSimpleMode) onToggleMode(); }}
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 isSimpleMode
                   ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30 ring-1 ring-emerald-400'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200'
               }`}
               title="Retail Simple View: Plain-English explanations, visual cards & easy sliders"
             >
-              <Sparkles className={`w-3.5 h-3.5 ${isSimpleMode ? 'text-slate-950' : 'text-emerald-400'}`} />
+              <Sparkles className={`w-3.5 h-3.5 ${isSimpleMode ? 'text-slate-950' : 'text-emerald-500'}`} />
               <span>Simple</span>
               {isSimpleMode && <span className="text-[10px] bg-slate-950 text-emerald-400 font-extrabold px-1.5 py-0.2 rounded-full ml-0.5">ACTIVE</span>}
             </button>
@@ -108,11 +128,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 !isSimpleMode
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-1 ring-indigo-400'
-                  : 'text-slate-400 hover:text-slate-200'
+                  : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-slate-200'
               }`}
               title="Institutional Quant Terminal: Econometric matrices, DSR confidence, sensitivity grid"
             >
-              <Sliders className={`w-3.5 h-3.5 ${!isSimpleMode ? 'text-white' : 'text-indigo-400'}`} />
+              <Sliders className={`w-3.5 h-3.5 ${!isSimpleMode ? 'text-white' : 'text-indigo-500'}`} />
               <span>Quant</span>
               {!isSimpleMode && <span className="text-[10px] bg-white text-indigo-900 font-extrabold px-1.5 py-0.2 rounded-full ml-0.5">ACTIVE</span>}
             </button>
@@ -136,15 +156,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               </>
             ) : (
               <>
-                <Moon className="w-3.5 h-3.5 text-indigo-500" />
+                <Moon className="w-3.5 h-3.5 text-indigo-600" />
                 <span className="hidden sm:inline">Dark</span>
               </>
             )}
           </button>
 
           {/* Engine Status Indicators */}
-          <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-xs text-slate-300 font-mono">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <div className={`hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-md border text-xs font-mono ${
+            isLight ? 'bg-slate-100 border-slate-200 text-slate-700' : 'bg-slate-900 border-slate-800 text-slate-300'
+          }`}>
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
             <span>STT Wired</span>
           </div>
 
@@ -152,17 +174,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             id="btn-open-help-guide"
             onClick={() => onOpenHelp('overview')}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 hover:text-white text-xs font-medium transition cursor-pointer"
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+              isLight
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:text-slate-950'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-800 hover:text-white'
+            }`}
             title="Open comprehensive methodology, metric formulas, and feature guide"
           >
-            <HelpCircle className="w-3.5 h-3.5 text-emerald-400" />
+            <HelpCircle className="w-3.5 h-3.5 text-emerald-500" />
             <span className="hidden sm:inline">Guide</span>
           </button>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex overflow-x-auto no-scrollbar space-x-1 border-t border-slate-800/60 pt-1 text-sm">
+      <div className={`max-w-7xl mx-auto px-4 sm:px-6 flex overflow-x-auto no-scrollbar space-x-1 border-t pt-1 text-sm ${
+        isLight ? 'border-slate-200' : 'border-slate-800/60'
+      }`}>
         {isSimpleMode ? (
           <>
             <button
@@ -170,8 +198,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('backtest')}
               className={`px-4 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'backtest'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
               <BarChart2 className="w-4 h-4" />
@@ -183,13 +211,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('optimizer')}
               className={`px-4 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'optimizer'
-                  ? 'border-amber-500 text-amber-400 bg-amber-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveAmber
+                  : tabInactiveClass
               }`}
             >
-              <Award className="w-4 h-4 text-amber-400" />
+              <Award className="w-4 h-4 text-amber-500" />
               <span>Top Strategy Finder</span>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono font-bold">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${
+                isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/20 text-amber-300'
+              }`}>
                 Auto
               </span>
             </button>
@@ -199,13 +229,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('strategies')}
               className={`px-4 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'strategies'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
-              <Compass className="w-4 h-4 text-emerald-400" />
+              <Compass className="w-4 h-4 text-emerald-500" />
               <span>Strategy Library</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-300'
+              }`}>
                 8 Strats
               </span>
             </button>
@@ -215,8 +247,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('trades')}
               className={`px-4 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'trades'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
               <Database className="w-4 h-4" />
@@ -228,11 +260,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('costs')}
               className={`px-4 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'costs'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
-              <IndianRupee className="w-4 h-4 text-amber-400" />
+              <IndianRupee className="w-4 h-4 text-amber-500" />
               <span>Taxes &amp; Brokerage (₹)</span>
             </button>
 
@@ -241,13 +273,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('kite')}
               className={`px-4 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'kite'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
-              <Key className="w-4 h-4 text-emerald-400" />
+              <Key className="w-4 h-4 text-emerald-500" />
               <span>Zerodha Kite Data</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono">
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-300'
+              }`}>
                 .env
               </span>
             </button>
@@ -257,11 +291,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('transparency')}
               className={`px-4 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'transparency'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
               <span>Data Transparency &amp; FAQ</span>
             </button>
           </>
@@ -272,8 +306,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('backtest')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'backtest'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
               <BarChart2 className="w-4 h-4" />
@@ -285,13 +319,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('optimizer')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'optimizer'
-                  ? 'border-amber-500 text-amber-400 bg-amber-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveAmber
+                  : tabInactiveClass
               }`}
             >
-              <Award className="w-4 h-4 text-amber-400" />
+              <Award className="w-4 h-4 text-amber-500" />
               <span>Strategy Optimizer</span>
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-mono font-bold">
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-bold ${
+                isLight ? 'bg-amber-100 text-amber-800' : 'bg-amber-500/20 text-amber-300'
+              }`}>
                 Screener
               </span>
             </button>
@@ -301,14 +337,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('spread')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'spread'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
               <Activity className="w-4 h-4" />
               <span>Spread &amp; Z-Score</span>
               {(strategyId === 'pairs_cointegration' || strategyId === 'basket_meanreversion') && (
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono">
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                  isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-300'
+                }`}>
                   Live
                 </span>
               )}
@@ -319,8 +357,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('leaderboard')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'leaderboard'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
               <Layers className="w-4 h-4" />
@@ -332,8 +370,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('trades')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'trades'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
               <Database className="w-4 h-4" />
@@ -345,8 +383,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('sweep')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'sweep'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
               <Sliders className="w-4 h-4" />
@@ -358,8 +396,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('blueprint')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'blueprint'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
               <GitCommit className="w-4 h-4" />
@@ -371,13 +409,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('kite')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'kite'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
-              <Key className="w-4 h-4 text-emerald-400" />
+              <Key className="w-4 h-4 text-emerald-500" />
               <span>Zerodha Kite Data</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-mono">
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-300'
+              }`}>
                 .env
               </span>
             </button>
@@ -387,11 +427,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setActiveTab('transparency')}
               className={`px-3.5 py-2 font-medium flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === 'transparency'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? tabActiveEmerald
+                  : tabInactiveClass
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
               <span>Data Transparency</span>
             </button>
           </>

@@ -193,36 +193,55 @@ export const BASKET_CANDIDATES: BasketCandidate[] = [
   },
 ];
 
-export const TOP_NIFTY_STOCKS = [
-  { symbol: 'RELIANCE', name: 'Reliance Industries Ltd.', sector: 'Energy / Oil', price: 2980, weight: 10.2 },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd.', sector: 'Banking', price: 1640, weight: 11.4 },
-  { symbol: 'ICICIBANK', name: 'ICICI Bank Ltd.', sector: 'Banking', price: 1220, weight: 8.1 },
-  { symbol: 'INFY', name: 'Infosys Ltd.', sector: 'Information Tech', price: 1910, weight: 6.2 },
-  { symbol: 'TCS', name: 'Tata Consultancy Services', sector: 'Information Tech', price: 4420, weight: 4.5 },
-  { symbol: 'ITC', name: 'ITC Ltd.', sector: 'FMCG', price: 510, weight: 4.3 },
-  { symbol: 'LT', name: 'Larsen & Toubro Ltd.', sector: 'Infrastructure', price: 3680, weight: 3.9 },
-  { symbol: 'SBIN', name: 'State Bank of India', sector: 'PSU Bank', price: 825, weight: 3.2 },
-  { symbol: 'BHARTIARTL', name: 'Bharti Airtel Ltd.', sector: 'Telecom', price: 1580, weight: 4.1 },
-  { symbol: 'TATAMOTORS', name: 'Tata Motors Ltd.', sector: 'Automobile', price: 1040, weight: 2.3 },
-  { symbol: 'M&M', name: 'Mahindra & Mahindra Ltd.', sector: 'Automobile', price: 2820, weight: 2.5 },
-  { symbol: 'AXISBANK', name: 'Axis Bank Ltd.', sector: 'Banking', price: 1260, weight: 3.1 },
-];
+import { NIFTY_500_STOCKS, NIFTY_INDICES } from './niftyUniverses';
+
+export const TOP_NIFTY_STOCKS = NIFTY_500_STOCKS.slice(0, 50);
+
+export const INSTRUMENTS = NIFTY_500_STOCKS;
 
 export const INSTRUMENT_TOKENS: Record<string, number> = {
+  // Broad Market & Sectoral Indices
   'NIFTY 50': 256265,
-  'RELIANCE': 738561,
-  'HDFCBANK': 341249,
-  'ICICIBANK': 1270529,
-  'INFY': 408065,
-  'TCS': 2953217,
-  'ITC': 424961,
-  'LT': 2939649,
-  'SBIN': 779521,
-  'BHARTIARTL': 2714625,
-  'TATAMOTORS': 884737,
-  'M&M': 519937,
-  'AXISBANK': 1510401,
+  'NIFTY_50': 256265,
+  'NIFTY NEXT 50': 261897,
+  'NIFTY_NEXT_50': 261897,
+  'NIFTY 100': 258569,
+  'NIFTY_100': 258569,
+  'NIFTY 200': 260361,
+  'NIFTY_200': 260361,
+  'NIFTY MIDCAP 50': 260873,
+  'NIFTY_MIDCAP_50': 260873,
+  'NIFTY MIDCAP 100': 260617,
+  'NIFTY_MIDCAP_100': 260617,
+  'NIFTY MIDCAP 150': 266249,
+  'NIFTY_MIDCAP_150': 266249,
+  'NIFTY SMALLCAP 50': 266505,
+  'NIFTY_SMALLCAP_50': 266505,
+  'NIFTY SMALLCAP 100': 265737,
+  'NIFTY_SMALLCAP_100': 265737,
+  'NIFTY SMALLCAP 250': 267017,
+  'NIFTY_SMALLCAP_250': 267017,
+  'NIFTY 500': 257801,
+  'NIFTY_500': 257801,
+  'NIFTY BANK': 260105,
+  'NIFTY_BANK': 260105,
+  'NIFTY IT': 259849,
+  'NIFTY_IT': 259849,
+  'NIFTY AUTO': 257289,
+  'NIFTY_AUTO': 257289,
+  'NIFTY PHARMA': 257545,
+  'NIFTY_PHARMA': 257545,
+  'NIFTY FMCG': 258057,
+  'NIFTY_FMCG': 258057,
+  'NIFTY METAL': 258313,
+  'NIFTY_METAL': 258313,
+  'NIFTY ENERGY': 257033,
+  'NIFTY_ENERGY': 257033,
 };
 
-export const HISTORICAL_NIFTY_DAILY: Record<string, any[]> = {};
+// Populate tokens for all 100+ constituent stocks
+NIFTY_500_STOCKS.forEach(stock => {
+  INSTRUMENT_TOKENS[stock.symbol] = stock.token;
+});
 
+export const HISTORICAL_NIFTY_DAILY: Record<string, any[]> = {};

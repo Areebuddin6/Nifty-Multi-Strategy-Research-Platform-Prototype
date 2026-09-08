@@ -1,6 +1,6 @@
 {
   "name": "Nifty Multi-Strategy Research Platform",
-  "description": "Quantitative research and backtesting platform for Indian equities featuring BTST, Pairs Cointegration, and Basket Stat-Arb with realistic INR cost modeling, PSR/DSR statistics, and light/dark theme support.",
+  "description": "Institutional quantitative research and backtesting platform for Indian equities across all Nifty indices up to NIFTY 500, featuring Zerodha Kite v3 historical data ingestion, terminal CLI backtesting, tick-by-tick statutory tax drag, and PSR/DSR statistics.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

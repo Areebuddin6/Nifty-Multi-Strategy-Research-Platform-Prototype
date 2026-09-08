@@ -1,271 +1,201 @@
 import React, { useState } from 'react';
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  Line,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  CartesianGrid,
-} from 'recharts';
-import { DailyReturn, ThemeMode } from '../types';
+import { EquityCurvePoint } from '../types';
 
 interface EquityChartProps {
-  dailyReturns: DailyReturn[];
+  data: EquityCurvePoint[];
   initialCapital: number;
-  theme?: ThemeMode;
 }
 
-export const EquityChart: React.FC<EquityChartProps> = ({ dailyReturns, initialCapital, theme = 'dark' }) => {
-  const [chartMode, setChartMode] = useState<'equity' | 'return'>('equity');
-  const [showDrawdown, setShowDrawdown] = useState<boolean>(true);
+export const EquityChart: React.FC<EquityChartProps> = ({ data, initialCapital }) => {
+  const [hoveredPoint, setHoveredPoint] = useState<EquityCurvePoint | null>(null);
 
-  if (!dailyReturns || dailyReturns.length === 0) {
-    return <div className="p-8 text-center text-slate-500">No simulation data available.</div>;
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center text-slate-500 text-xs">
+        No equity curve data available.
+      </div>
+    );
   }
 
-  const isLight = theme === 'light';
-  const gridColor = isLight ? '#e2e8f0' : '#1e293b';
-  const axisColor = isLight ? '#64748b' : '#64748b';
-  const benchLineColor = isLight ? '#94a3b8' : '#64748b';
-  const tooltipStyle = isLight
-    ? {
-        backgroundColor: '#ffffff',
-        borderColor: '#e2e8f0',
-        borderRadius: '8px',
-        fontSize: '12px',
-        color: '#0f172a',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-      }
-    : {
-        backgroundColor: '#020617',
-        borderColor: '#334155',
-        borderRadius: '8px',
-        fontSize: '12px',
-        color: '#f8fafc',
-      };
+  // Calculate scales
+  const allEquities = data.map(d => d.equity);
+  const allBenchmarks = data.map(d => d.benchmarkEquity);
+  const minVal = Math.min(...allEquities, ...allBenchmarks, initialCapital * 0.9);
+  const maxVal = Math.max(...allEquities, ...allBenchmarks, initialCapital * 1.1);
 
-  const sampleRate = Math.max(1, Math.floor(dailyReturns.length / 160));
-  const initialBench = dailyReturns[0]?.benchmarkValue || 10500;
+  const width = 800;
+  const height = 300;
+  const padding = { top: 20, right: 30, bottom: 30, left: 70 };
 
-  const chartData = dailyReturns
-    .filter((_, idx) => idx % sampleRate === 0 || idx === dailyReturns.length - 1)
-    .map((d) => {
-      const stratReturnPct = ((d.portfolioValue - initialCapital) / initialCapital) * 100;
-      const benchReturnPct = ((d.benchmarkValue - initialBench) / initialBench) * 100;
-      const benchEquityValue = initialCapital * (1 + benchReturnPct / 100);
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
 
-      return {
-        date: d.date,
-        portfolioValue: Math.round(d.portfolioValue),
-        benchmarkEquity: Math.round(benchEquityValue),
-        stratReturnPct: parseFloat(stratReturnPct.toFixed(2)),
-        benchReturnPct: parseFloat(benchReturnPct.toFixed(2)),
-        drawdown: -parseFloat(d.drawdown.toFixed(2)),
-        benchDrawdown: -parseFloat(d.benchmarkDrawdown.toFixed(2)),
-      };
-    });
+  const getX = (index: number) => {
+    return padding.left + (index / (data.length - 1)) * chartWidth;
+  };
 
-  const formatCurrency = (val: number) => {
+  const getY = (val: number) => {
+    return padding.top + chartHeight - ((val - minVal) / (maxVal - minVal)) * chartHeight;
+  };
+
+  // SVG path for Strategy Equity Curve
+  const strategyPath = data.reduce((path, point, i) => {
+    const x = getX(i);
+    const y = getY(point.equity);
+    return `${path} ${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }, '');
+
+  // Area under strategy curve
+  const areaPath = `${strategyPath} L ${getX(data.length - 1)} ${padding.top + chartHeight} L ${getX(0)} ${padding.top + chartHeight} Z`;
+
+  // Benchmark curve path
+  const benchmarkPath = data.reduce((path, point, i) => {
+    const x = getX(i);
+    const y = getY(point.benchmarkEquity);
+    return `${path} ${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+  }, '');
+
+  // Format currency
+  const formatINR = (val: number) => {
     if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
     if (val >= 100000) return `₹${(val / 100000).toFixed(2)} L`;
-    return `₹${val.toLocaleString('en-IN')}`;
+    return `₹${val.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 transition-colors shadow-sm">
-      {/* Chart Header & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-100 flex items-center space-x-2">
-            <span>Cumulative Performance vs NIFTY 50 Benchmark</span>
-          </h3>
-          <p className="text-xs text-slate-400">
-            Realized day-by-day equity progression net of all Indian taxes, STT &amp; slippage
-          </p>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          {/* Mode Toggle */}
-          <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-mono">
-            <button
-              id="btn-chart-equity"
-              onClick={() => setChartMode('equity')}
-              className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
-                chartMode === 'equity'
-                  ? 'bg-emerald-500/20 text-emerald-400 font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Rupees (₹)
-            </button>
-            <button
-              id="btn-chart-return"
-              onClick={() => setChartMode('return')}
-              className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
-                chartMode === 'return'
-                  ? 'bg-emerald-500/20 text-emerald-400 font-semibold'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Return (%)
-            </button>
+    <div className="relative w-full">
+      {/* Legend & Current Hover */}
+      <div className="flex flex-wrap items-center justify-between text-xs mb-3 px-1">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <span className="w-3 h-1 bg-emerald-400 rounded-full inline-block" />
+            <span className="text-slate-300 font-medium">Strategy (Net of STT &amp; Taxes)</span>
           </div>
-
-          <button
-            id="btn-toggle-drawdown"
-            onClick={() => setShowDrawdown(!showDrawdown)}
-            className={`px-2.5 py-1.5 text-xs font-mono rounded-lg border transition-colors cursor-pointer ${
-              showDrawdown
-                ? 'bg-slate-800 border-slate-700 text-slate-200'
-                : 'bg-slate-950 border-slate-800 text-slate-500'
-            }`}
-          >
-            {showDrawdown ? 'Hide Drawdown' : 'Show Drawdown'}
-          </button>
+          <div className="flex items-center space-x-2">
+            <span className="w-3 h-1 bg-slate-500 rounded-full inline-block" />
+            <span className="text-slate-400">Nifty 50 Benchmark Buy &amp; Hold</span>
+          </div>
         </div>
+
+        {hoveredPoint && (
+          <div className="text-xs font-mono text-slate-300 bg-slate-850 px-2 py-1 rounded border border-slate-700">
+            <span>{hoveredPoint.date}: </span>
+            <span className="text-emerald-400 font-bold">{formatINR(hoveredPoint.equity)}</span>
+            <span className="text-slate-500 mx-1.5">|</span>
+            <span className="text-slate-400">DD: -{hoveredPoint.drawdownPct.toFixed(1)}%</span>
+          </div>
+        )}
       </div>
 
-      {/* Main Equity Chart */}
-      <div className="h-72 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-            <XAxis
-              dataKey="date"
-              stroke={axisColor}
-              fontSize={11}
-              tickLine={false}
-              tickFormatter={(d) => d.slice(0, 7)}
-            />
-            <YAxis
-              stroke={axisColor}
-              fontSize={11}
-              domain={['auto', 'auto']}
-              tickFormatter={(v) => (chartMode === 'equity' ? formatCurrency(v) : `${v}%`)}
-              orientation="right"
-            />
-            <Tooltip
-              contentStyle={tooltipStyle}
-              formatter={(value: any, name: any) => {
-                const label = name === 'portfolioValue' || name === 'stratReturnPct' ? 'Strategy Net Equity' : 'NIFTY 50 Buy & Hold';
-                const formatted = chartMode === 'equity' ? formatCurrency(Number(value)) : `${Number(value).toFixed(2)}%`;
-                return [formatted, label];
-              }}
-              labelFormatter={(label) => `Trading Day: ${label}`}
-            />
-            <Legend
-              verticalAlign="top"
-              height={30}
-              formatter={(value) => (
-                <span className="text-xs text-slate-300 mr-4 font-mono">
-                  {value === 'portfolioValue' || value === 'stratReturnPct' ? 'Strategy Equity' : 'NIFTY 50 Benchmark'}
-                </span>
-              )}
-            />
-            {chartMode === 'equity' ? (
-              <>
-                <Area
-                  type="monotone"
-                  dataKey="portfolioValue"
-                  name="portfolioValue"
-                  fill="#10b981"
-                  fillOpacity={isLight ? 0.12 : 0.08}
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="benchmarkEquity"
-                  name="benchmarkEquity"
-                  stroke={benchLineColor}
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
-                  dot={false}
-                />
-              </>
-            ) : (
-              <>
-                <Area
-                  type="monotone"
-                  dataKey="stratReturnPct"
-                  name="stratReturnPct"
-                  fill="#10b981"
-                  fillOpacity={isLight ? 0.12 : 0.08}
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="benchReturnPct"
-                  name="benchReturnPct"
-                  stroke={benchLineColor}
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
-                  dot={false}
-                />
-              </>
-            )}
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+      {/* SVG Chart Container */}
+      <div className="w-full overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="w-full h-auto max-h-72 select-none"
+          onMouseLeave={() => setHoveredPoint(null)}
+        >
+          <defs>
+            <linearGradient id="equityGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+            </linearGradient>
+          </defs>
 
-      {/* Underwater Drawdown Chart */}
-      {showDrawdown && (
-        <div className="mt-4 pt-4 border-t border-slate-800">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span className="font-semibold">Underwater Drawdown Profile (% from All-Time Peak)</span>
-            <span className="font-mono text-[11px] text-slate-500">
-              Strategy vs NIFTY 50 Benchmark Peak
-            </span>
-          </div>
-          <div className="h-28 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-                <XAxis dataKey="date" hide />
-                <YAxis
-                  stroke={axisColor}
-                  fontSize={10}
-                  domain={['auto', 0]}
-                  tickFormatter={(v) => `${v}%`}
-                  orientation="right"
+          {/* Grid lines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
+            const y = padding.top + chartHeight * (1 - ratio);
+            const val = minVal + (maxVal - minVal) * ratio;
+            return (
+              <g key={i}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={width - padding.right}
+                  y2={y}
+                  stroke="#1e293b"
+                  strokeDasharray="3 3"
                 />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  formatter={(val: any, name: any) => [
-                    `${Number(val).toFixed(2)}%`,
-                    name === 'drawdown' ? 'Strategy Drawdown' : 'Nifty Drawdown',
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="drawdown"
-                  name="drawdown"
-                  stroke="#f43f5e"
-                  fill="#f43f5e"
-                  fillOpacity={isLight ? 0.2 : 0.25}
-                  strokeWidth={1.2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="benchDrawdown"
-                  name="benchDrawdown"
-                  stroke={benchLineColor}
-                  strokeWidth={1}
-                  strokeDasharray="2 2"
-                  dot={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
+                <text
+                  x={padding.left - 8}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="fill-slate-500 text-[10px] font-mono"
+                >
+                  {formatINR(val)}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Date ticks on X axis */}
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
+            const index = Math.min(data.length - 1, Math.floor(ratio * (data.length - 1)));
+            const x = getX(index);
+            const dateStr = data[index]?.date || '';
+            return (
+              <text
+                key={i}
+                x={x}
+                y={height - 8}
+                textAnchor="middle"
+                className="fill-slate-500 text-[10px] font-mono"
+              >
+                {dateStr}
+              </text>
+            );
+          })}
+
+          {/* Area fill */}
+          <path d={areaPath} fill="url(#equityGradient)" />
+
+          {/* Benchmark line */}
+          <path
+            d={benchmarkPath}
+            fill="none"
+            stroke="#64748b"
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+          />
+
+          {/* Strategy line */}
+          <path
+            d={strategyPath}
+            fill="none"
+            stroke="#10b981"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Hover interactive overlay */}
+          {data.map((point, i) => {
+            const x = getX(i);
+            const y = getY(point.equity);
+            return (
+              <rect
+                key={i}
+                x={x - chartWidth / data.length / 2}
+                y={padding.top}
+                width={chartWidth / data.length}
+                height={chartHeight}
+                fill="transparent"
+                onMouseEnter={() => setHoveredPoint(point)}
+                className="cursor-crosshair"
+              />
+            );
+          })}
+
+          {/* Hover indicator point */}
+          {hoveredPoint && (
+            <circle
+              cx={getX(data.findIndex(d => d.date === hoveredPoint.date))}
+              cy={getY(hoveredPoint.equity)}
+              r="4.5"
+              className="fill-emerald-400 stroke-slate-900 stroke-2"
+            />
+          )}
+        </svg>
+      </div>
     </div>
   );
 };

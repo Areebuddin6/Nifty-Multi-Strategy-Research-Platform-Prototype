@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
+import { NIFTY_500_STOCKS, NIFTY_INDICES } from './src/data/niftyUniverses';
 
 // Load environment variables from .env
 dotenv.config();
@@ -13,31 +14,20 @@ const PORT = 3000;
 let sessionAccessToken = process.env.KITE_ACCESS_TOKEN || '';
 let sessionUserProfile: any = null;
 
-// NSE instruments reference map
-const NSE_INSTRUMENT_MAP: Record<string, { token: number; name: string; sector: string }> = {
-  'NIFTY 50': { token: 256265, name: 'Nifty 50 Index', sector: 'Benchmark' },
-  'NIFTY_50': { token: 256265, name: 'Nifty 50 Index', sector: 'Benchmark' },
-  'NIFTY BANK': { token: 260105, name: 'Nifty Bank Index', sector: 'Banking' },
-  'HDFCBANK': { token: 341249, name: 'HDFC Bank Ltd', sector: 'Banking' },
-  'ICICIBANK': { token: 1270529, name: 'ICICI Bank Ltd', sector: 'Banking' },
-  'SBIN': { token: 779521, name: 'State Bank of India', sector: 'Banking' },
-  'KOTAKBANK': { token: 492033, name: 'Kotak Mahindra Bank Ltd', sector: 'Banking' },
-  'AXISBANK': { token: 1510401, name: 'Axis Bank Ltd', sector: 'Banking' },
-  'BAJFINANCE': { token: 81153, name: 'Bajaj Finance Ltd', sector: 'NBFC' },
-  'BAJAJFINSV': { token: 4267265, name: 'Bajaj Finserv Ltd', sector: 'NBFC' },
-  'TCS': { token: 295321, name: 'Tata Consultancy Services Ltd', sector: 'IT' },
-  'INFY': { token: 408065, name: 'Infosys Ltd', sector: 'IT' },
-  'WIPRO': { token: 969473, name: 'Wipro Ltd', sector: 'IT' },
-  'HCLTECH': { token: 1850625, name: 'HCL Technologies Ltd', sector: 'IT' },
-  'TECHM': { token: 3465729, name: 'Tech Mahindra Ltd', sector: 'IT' },
-  'RELIANCE': { token: 738561, name: 'Reliance Industries Ltd', sector: 'Conglomerate' },
-  'ONGC': { token: 633601, name: 'Oil & Natural Gas Corp Ltd', sector: 'Oil & Gas' },
-  'LT': { token: 2939649, name: 'Larsen & Toubro Ltd', sector: 'Infrastructure' },
-  'TATAMOTORS': { token: 884737, name: 'Tata Motors Ltd', sector: 'Automobile' },
-  'M&M': { token: 519937, name: 'Mahindra & Mahindra Ltd', sector: 'Automobile' },
-  'HINDUNILVR': { token: 356865, name: 'Hindustan Unilever Ltd', sector: 'FMCG' },
-  'ITC': { token: 424961, name: 'ITC Ltd', sector: 'FMCG' },
-};
+// NSE instruments reference map covering all Nifty indices up to Nifty 500 and constituent stocks
+const NSE_INSTRUMENT_MAP: Record<string, { token: number; name: string; sector: string }> = {};
+
+// Register all Nifty indices up to Nifty 500
+NIFTY_INDICES.forEach(index => {
+  NSE_INSTRUMENT_MAP[index.id] = { token: index.token, name: index.name, sector: index.category };
+  NSE_INSTRUMENT_MAP[index.name] = { token: index.token, name: index.name, sector: index.category };
+  NSE_INSTRUMENT_MAP[index.shortName] = { token: index.token, name: index.name, sector: index.category };
+});
+
+// Register all constituent stocks across Nifty 500
+NIFTY_500_STOCKS.forEach(stock => {
+  NSE_INSTRUMENT_MAP[stock.symbol] = { token: stock.token, name: stock.name, sector: stock.sector };
+});
 
 async function startServer() {
   const app = express();

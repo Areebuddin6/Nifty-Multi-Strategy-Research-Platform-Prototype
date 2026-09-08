@@ -4,14 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nifty Multi-Strategy Research Platform</title>
-    <meta name="description" content="Quantitative research and backtesting platform for Indian equities featuring BTST, Pairs Cointegration, and Basket Stat-Arb with realistic INR cost modeling, PSR/DSR statistics, and light/dark theme support." />
+    <meta name="description" content="Institutional quantitative research and backtesting platform for Indian equities across all Nifty indices up to NIFTY 500, featuring Zerodha Kite v3 historical data ingestion, terminal CLI backtesting, tick-by-tick statutory tax drag, and PSR/DSR statistics." />
     <meta property="og:title" content="Nifty Multi-Strategy Research Platform" />
-    <meta property="og:description" content="Quantitative research and backtesting platform for Indian equities featuring BTST, Pairs Cointegration, and Basket Stat-Arb with realistic INR cost modeling, PSR/DSR statistics, and light/dark theme support." />
+    <meta property="og:description" content="Institutional quantitative research and backtesting platform for Indian equities across all Nifty indices up to NIFTY 500, featuring Zerodha Kite v3 historical data ingestion, terminal CLI backtesting, tick-by-tick statutory tax drag, and PSR/DSR statistics." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // Suppress benign Vite HMR websocket disconnection unhandled rejections in sandboxed preview
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event.reason) {
+          var msg = event.reason.message || String(event.reason);
+          if (msg.includes('WebSocket') || msg.includes('websocket') || msg.includes('vite')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+          }
+        }
+      });
+      window.addEventListener('error', function(event) {
+        if (event.message && (event.message.includes('WebSocket') || event.message.includes('websocket') || event.message.includes('vite'))) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+        }
+      });
+    </script>
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
     <div id="root"></div>

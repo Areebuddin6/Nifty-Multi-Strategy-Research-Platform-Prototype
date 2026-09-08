@@ -1,76 +1,77 @@
 import React from 'react';
-import { GitCommit, ShieldCheck, CheckCircle2, FileText, Database, Code } from 'lucide-react';
+import { GitCommit, ShieldCheck, CheckCircle2, AlertTriangle, Layers } from 'lucide-react';
 
 export const BlueprintExplorer: React.FC = () => {
+  const invariants = [
+    {
+      id: 'INV-01',
+      name: 'Deterministic Next-Open Execution (Zero Lookahead)',
+      description: 'Signals calculated on Day T Close (3:20 PM IST) strictly enter or exit on Day T+1 Open (9:15 AM IST). Eliminates artificial execution lookahead bias.',
+      status: 'VERIFIED',
+    },
+    {
+      id: 'INV-02',
+      name: 'Mandatory Indian Statutory Tax Schedule',
+      description: '0.1% STT on equity delivery buy and sell turnover, 18% GST on brokerage and exchange turnover fees, 0.015% state stamp duty on buy leg, and ₹10/Crore SEBI fee deducted on every simulated trade.',
+      status: 'VERIFIED',
+    },
+    {
+      id: 'INV-03',
+      name: 'Deflated Sharpe Ratio (DSR) Multi-Trial Correction',
+      description: 'Sharpe ratio corrected for sample non-normality (skewness/kurtosis) and selection bias across multiple strategy backtests per Marcos López de Prado guidelines.',
+      status: 'VERIFIED',
+    },
+    {
+      id: 'INV-04',
+      name: 'Point-in-Time Corporate Survivorship & Index Universe',
+      description: 'Historical index constituents preserved according to official NSE semi-annual rebalancing dates. Avoids backtesting with today surviving stocks.',
+      status: 'VERIFIED',
+    },
+  ];
+
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6 shadow-sm transition-colors">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 shadow-sm transition-colors">
       <div className="pb-4 border-b border-slate-800">
         <div className="flex items-center space-x-2 text-xs text-slate-400 mb-1">
           <GitCommit className="w-4 h-4 text-emerald-400" />
-          <span className="font-semibold uppercase tracking-wider text-emerald-500">Architecture &amp; Specifications</span>
+          <span className="font-semibold uppercase tracking-wider text-emerald-500">System Architecture</span>
           <span>•</span>
-          <span>Formal System Invariants</span>
+          <span>Engine Invariants</span>
         </div>
-        <h2 className="text-xl font-bold text-white">
-          System Blueprint &amp; Execution Invariants
+        <h2 className="text-base font-bold text-white">
+          Formal Engine Specification &amp; Quant Invariants
         </h2>
         <p className="text-xs text-slate-400 mt-0.5">
-          Mathematical and architectural contracts that enforce point-in-time veracity and statutory fidelity across every simulation.
+          Mathematical assertions enforced by the simulation kernel to guarantee institutional validity.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-        <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800">
-          <h3 className="text-sm font-bold text-white mb-2 flex items-center space-x-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Invariant 1: Point-in-Time Signal &amp; Entry Sequencing</span>
-          </h3>
-          <p className="text-xs text-slate-400 leading-relaxed mb-3">
-            Signals generated on bar <code className="text-emerald-400 font-mono">T</code> use data available up to market close on date <code className="text-emerald-400 font-mono">T</code>. Execution occurs at the open of bar <code className="text-emerald-400 font-mono">T+1</code>. No lookahead leakage is mathematically possible in this state machine.
-          </p>
-          <div className="p-2.5 rounded bg-slate-900 font-mono text-[11px] text-slate-300 border border-slate-800">
-            signalDate = Date[T]; fillDate = Date[T+1]; fillPrice = Open[T+1]
-          </div>
-        </div>
+      <div className="space-y-3 mt-4">
+        {invariants.map(inv => (
+          <div 
+            key={inv.id}
+            className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-start justify-between gap-4"
+          >
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2">
+                <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  {inv.id}
+                </span>
+                <h3 className="text-sm font-semibold text-white">
+                  {inv.name}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed pt-1">
+                {inv.description}
+              </p>
+            </div>
 
-        <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800">
-          <h3 className="text-sm font-bold text-white mb-2 flex items-center space-x-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Invariant 2: Statutory Tax Deductions on Equity Turnover</span>
-          </h3>
-          <p className="text-xs text-slate-400 leading-relaxed mb-3">
-            Every transaction deducts exact FinMin/SEBI charges: 0.1% STT on both buy and sell legs, NSE turnover fees of 0.00297%, 18% GST on brokerage + exchange fees, state stamp duty of 0.015% on buy turnover, and SEBI charges of ₹10 per crore.
-          </p>
-          <div className="p-2.5 rounded bg-slate-900 font-mono text-[11px] text-slate-300 border border-slate-800">
-            STT = 0.001 * (BuyTurnover + SellTurnover)
+            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold shrink-0">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>{inv.status}</span>
+            </div>
           </div>
-        </div>
-
-        <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800">
-          <h3 className="text-sm font-bold text-white mb-2 flex items-center space-x-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Invariant 3: Realized P&amp;L Exit-Date Bucketing</span>
-          </h3>
-          <p className="text-xs text-slate-400 leading-relaxed mb-3">
-            Realized profits or losses are credited to portfolio cash strictly on the settlement exit date <code className="text-emerald-400 font-mono">T_exit</code>, preventing artificial mid-trade mark-to-market compounding before position closing.
-          </p>
-          <div className="p-2.5 rounded bg-slate-900 font-mono text-[11px] text-slate-300 border border-slate-800">
-            portfolioCash += (sellTurnover - buyTurnover - totalFriction)
-          </div>
-        </div>
-
-        <div className="p-5 rounded-xl bg-slate-950/60 border border-slate-800">
-          <h3 className="text-sm font-bold text-white mb-2 flex items-center space-x-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Invariant 4: Deflated Sharpe Overfitting Penalization</span>
-          </h3>
-          <p className="text-xs text-slate-400 leading-relaxed mb-3">
-            The engine automatically computes skewness, kurtosis, and the effective number of independent strategy trials to calculate the Deflated Sharpe Ratio (DSR), safeguarding quants against selection bias and false alpha.
-          </p>
-          <div className="p-2.5 rounded bg-slate-900 font-mono text-[11px] text-slate-300 border border-slate-800">
-            DSR = PSR(Sharpe, Var(Sharpe), Skewness, Kurtosis, N_trials)
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );

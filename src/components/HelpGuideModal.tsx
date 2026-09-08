@@ -44,7 +44,7 @@ export const HelpGuideModal: React.FC<HelpGuideModalProps> = ({
         {/* Header */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
           <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>

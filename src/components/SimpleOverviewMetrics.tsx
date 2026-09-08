@@ -32,8 +32,9 @@ export const SimpleOverviewMetrics: React.FC<SimpleOverviewMetricsProps> = ({
   };
 
   const formatINR = (val: number) => {
-    const isNeg = val < 0;
-    const abs = Math.abs(val);
+    const num = val ?? 0;
+    const isNeg = num < 0;
+    const abs = Math.abs(num);
     if (abs >= 10000000) return `${isNeg ? '-' : ''}₹${(abs / 10000000).toFixed(2)} Cr`;
     if (abs >= 100000) return `${isNeg ? '-' : ''}₹${(abs / 100000).toFixed(2)} Lakh`;
     return `${isNeg ? '-' : ''}₹${abs.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
@@ -58,7 +59,7 @@ export const SimpleOverviewMetrics: React.FC<SimpleOverviewMetricsProps> = ({
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-xs">
           <span className="text-slate-400">Total Gain / Loss</span>
           <span className={`font-mono font-bold ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
-            {isProfit ? '+' : ''}{stats.totalReturnPct.toFixed(1)}%
+            {isProfit ? '+' : ''}{(stats.totalReturnPct ?? 0).toFixed(1)}%
           </span>
         </div>
       </div>
@@ -75,11 +76,11 @@ export const SimpleOverviewMetrics: React.FC<SimpleOverviewMetricsProps> = ({
           </div>
         </div>
         <div className="text-2xl font-bold font-mono text-white tracking-tight">
-          {stats.cagrPct.toFixed(1)}% <span className="text-xs font-normal text-slate-400">per year</span>
+          {(stats.cagrPct ?? 0).toFixed(1)}% <span className="text-xs font-normal text-slate-400">per year</span>
         </div>
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-xs">
           <span className="text-slate-400">Nifty 50 Benchmark</span>
-          <span className="font-mono text-slate-300 font-semibold">{stats.benchmarkCagrPct.toFixed(1)}% / yr</span>
+          <span className="font-mono text-slate-300 font-semibold">{(stats.benchmarkCagrPct ?? 0).toFixed(1)}% / yr</span>
         </div>
       </div>
 
@@ -95,12 +96,12 @@ export const SimpleOverviewMetrics: React.FC<SimpleOverviewMetricsProps> = ({
           </div>
         </div>
         <div className="text-2xl font-bold font-mono text-white tracking-tight">
-          {stats.winRatePct.toFixed(0)}% <span className="text-xs font-normal text-slate-400">winners</span>
+          {(stats.winRatePct ?? 0).toFixed(0)}% <span className="text-xs font-normal text-slate-400">winners</span>
         </div>
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-xs">
           <span className="text-slate-400">Winning Trades</span>
           <span className="font-mono text-slate-300 font-semibold">
-            {stats.winningTrades} of {stats.totalTrades} completed
+            {stats.winningTrades ?? 0} of {stats.totalTrades ?? 0} completed
           </span>
         </div>
       </div>
@@ -117,14 +118,14 @@ export const SimpleOverviewMetrics: React.FC<SimpleOverviewMetricsProps> = ({
           </div>
         </div>
         <div className="text-2xl font-bold font-mono text-amber-400 tracking-tight">
-          {formatINR(costs.total)}
+          {formatINR(costs?.total ?? 0)}
         </div>
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-xs">
           <div className="flex items-center space-x-1 text-slate-400">
             <span>Max Drop (Risk)</span>
             <MetricHelpButton metricId="max_drawdown" onOpenHelp={handleHelp} size="xs" />
           </div>
-          <span className="font-mono text-rose-400 font-semibold">-{stats.maxDrawdownPct.toFixed(1)}% peak</span>
+          <span className="font-mono text-rose-400 font-semibold">-{(stats.maxDrawdownPct ?? 0).toFixed(1)}% peak</span>
         </div>
       </div>
     </div>
